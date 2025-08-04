@@ -1,0 +1,163 @@
+{
+  "info": {
+    "name": "Beaten Admin API",
+    "description": "Collection for testing Beaten admin authentication and management endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Admin Registration",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Admin\",\n  \"email\": \"admin@test.com\",\n  \"password\": \"AdminPass123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "register"]
+        }
+      }
+    },
+    {
+      "name": "Admin Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    if (response.success && response.data.token) {",
+              "        pm.collectionVariables.set('adminToken', response.data.token);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@beaten.com\",\n  \"password\": \"Admin123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "login"]
+        }
+      }
+    },
+    {
+      "name": "Get Admin Profile",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/admin/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "profile"]
+        }
+      }
+    },
+    {
+      "name": "Update Admin Profile",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Updated Admin Name\",\n  \"email\": \"updated@admin.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/profile",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "profile"]
+        }
+      }
+    },
+    {
+      "name": "Change Admin Password",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"currentPassword\": \"Admin123!\",\n  \"newPassword\": \"NewAdminPass123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/admin/change-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "change-password"]
+        }
+      }
+    },
+
+    {
+      "name": "Admin Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/admin/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["admin", "logout"]
+        }
+      }
+    }
+  ]
+}
