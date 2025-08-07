@@ -94,7 +94,7 @@ router.post("/return", protect, async (req, res) => {
     await user.save();
 
     // Send return placed email to user
-    sendReturnPlacedEmail(
+    await sendReturnPlacedEmail(
       user.email,
       user.name,
       orderId,
@@ -103,7 +103,7 @@ router.post("/return", protect, async (req, res) => {
     ).catch(console.error);
 
     // Send admin notification for return request
-    sendAdminReturnNotification({
+    await sendAdminReturnNotification({
       orderId,
       productId,
       userName: user.name,
