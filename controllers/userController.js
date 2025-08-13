@@ -1,9 +1,7 @@
 const User = require("../models/User");
 
-// Manual subscription endpoint for frontend-only Razorpay test/demo
 const manualSubscribe = async (req, res) => {
   try {
-    console.log("manualSubscribe");
     const userId = req.user.id;
     const { plan, paymentId, subscribedAt, expiry } = req.body;
     // Update user subscription fields

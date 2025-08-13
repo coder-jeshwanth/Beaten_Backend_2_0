@@ -1061,7 +1061,7 @@ const sendAdminReturnNotification = async (returnData) => {
   try {
     const transporter = createTransporter();
     const { orderId, productId, userName, userEmail, reason } = returnData;
-
+    console.log("Mail Called")
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
@@ -1178,9 +1178,9 @@ const sendAdminReturnNotification = async (returnData) => {
 
     const mailOptions = {
       from: `"BEATEN Return System" <${
-        process.env.EMAIL_USER || "laptoptest7788@gmail.com"
+        process.env.EMAIL_USER || "support@beaten.in"
       }>`,
-      to: process.env.ADMIN_RETURN_MAIL || "laptoptest7788@gmail.com", // Admin email
+      to: process.env.ADMIN_RETURN_MAIL || "returns@beaten.in", // Admin email
       subject: `🔄 New Return Request - Order #${orderId}`,
       html: htmlContent,
     };

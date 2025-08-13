@@ -53,7 +53,7 @@ const productSchema = new mongoose.Schema(
       required: true,
       enum: [
         "Beaten Exclusive Collection",
-        "Beaten Launch Sale Vol 1",
+        "Beaten Launch Sale Drop 1",
         "Beaten Signature Collection",
         "New Arrivals",
         "Best Sellers",
