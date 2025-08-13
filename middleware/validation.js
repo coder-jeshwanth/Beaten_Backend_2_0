@@ -40,7 +40,6 @@ const registerValidation = [
 const loginValidation = [
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please enter a valid email"),
   body("password").notEmpty().withMessage("Password is required"),
   handleValidationErrors,
@@ -57,7 +56,7 @@ const profileUpdateValidation = [
   body("email")
     .optional()
     .isEmail()
-    .normalizeEmail()
+
     .withMessage("Please enter a valid email"),
   handleValidationErrors,
 ];
@@ -70,7 +69,6 @@ const adminRegisterValidation = [
     .withMessage("Name must be between 2 and 50 characters"),
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please enter a valid email"),
   body("password")
     .isLength({ min: 8 })
@@ -87,7 +85,6 @@ const adminRegisterValidation = [
 const adminLoginValidation = [
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please enter a valid email"),
   body("password").notEmpty().withMessage("Password is required"),
   handleValidationErrors,
@@ -103,7 +100,6 @@ const adminProfileUpdateValidation = [
   body("email")
     .optional()
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please enter a valid email"),
   handleValidationErrors,
 ];
