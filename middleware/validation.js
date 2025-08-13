@@ -25,7 +25,6 @@ const registerValidation = [
     .withMessage("Name must be between 2 and 50 characters"),
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please enter a valid email"),
   body("password")
     .isLength({ min: 6 })
@@ -34,7 +33,7 @@ const registerValidation = [
     .withMessage(
       "Password must contain at least one uppercase letter, one lowercase letter, and one number"
     ),
-  handleValidationErrors,
+  handleValidationErrors
 ];
 
 // Login validation rules

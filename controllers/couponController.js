@@ -129,8 +129,7 @@ exports.applyCoupon = async (req, res) => {
 exports.getUserCoupons = async (req, res) => {
   try {
     const now = new Date();
-    console.log("camed to getUserCoupons");
-    // Only get public coupons for users
+   
     const coupons = await Coupon.find({
       type: "public",
       status: "active",

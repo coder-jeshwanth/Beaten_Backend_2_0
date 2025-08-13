@@ -52,7 +52,6 @@ export const cancelShiprocketOrder = async (shiprocketOrderId) => {
     });
     return res.data;
   } catch (error) {
-    console.error("❌ Failed to cancel Shiprocket order:", error.response?.data || error.message);
     throw error;
   }
 };

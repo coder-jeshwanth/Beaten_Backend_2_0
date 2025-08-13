@@ -152,8 +152,6 @@ router.get("/returns", protect, async (req, res) => {
 router.get("/users", async (req, res) => {
   try {
     const allUsers = await User.find();
-    console.log(allUsers);
-
     if (!allUsers) return res.status(404).json({ message: "Users not found" });
     res.json({
       success: true,

@@ -5,8 +5,6 @@ const Product = require("../models/Product");
 // @access  Public
 const getProducts = async (req, res) => {
   try {
-    console.log("camed to here");
-
     const {
       page = 1,
       limit = 12,

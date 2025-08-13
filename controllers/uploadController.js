@@ -15,7 +15,6 @@ const uploadImage = async (req, res) => {
     });
     return res.json({ success: true, imageUrl: result.secure_url });
   } catch (error) {
-    console.error("Cloudinary upload error:", error);
     return res.status(500).json({
       success: false,
       message: "Image upload failed",

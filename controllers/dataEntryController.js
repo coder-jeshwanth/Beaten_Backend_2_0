@@ -93,7 +93,6 @@ exports.updateSlideImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("updated succesfully");
     
     res.status(200).json({ slideImages: dataEntry.slideImages });
   } catch (error) {
@@ -112,7 +111,6 @@ exports.deleteSlideImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("deleted succesfully");
     
     res
       .status(200)
@@ -152,7 +150,6 @@ exports.getMobileSlideImages = async (req, res) => {
       if (!dataEntry) {
         return res.status(404).json({ message: "DataEntry not found" });
       }
-      console.log("mobile updated succesfully");
       
       res.status(200).json({ slideImages: dataEntry.mobileSlideImages });
     } catch (error) {
@@ -171,8 +168,6 @@ exports.getMobileSlideImages = async (req, res) => {
       if (!dataEntry) {
         return res.status(404).json({ message: "DataEntry not found" });
       }
-      console.log("deleted succesfully");
-      
       res
         .status(200)
         .json({
@@ -191,7 +186,6 @@ exports.getCollectionImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("camed to collection images get");
     
     res.status(200).json({ collectionsImages: dataEntry[0].collectionsImages });
   } catch (error) {
@@ -213,7 +207,6 @@ exports.updateCollectionImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("collections updated succesfully");
     
     res.status(200).json({ collectionsImages: dataEntry.collectionsImages });
   } catch (error) {
@@ -227,8 +220,6 @@ exports.getMobileCollectionImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("camed to mobile collection images get");
-    //console.log("mobile collection images", dataEntry[0].mobileCollectionsImages);
     
       res.status(200).json({ mobileCollectionsImages: dataEntry[0].mobileCollectionsImages });
   } catch (error) {
@@ -250,7 +241,6 @@ exports.updateMobileCollectionImages = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log("mobile collections updated succesfully");
     
     res.status(200).json({ mobileCollectionsImages: dataEntry.mobileCollectionsImages });
   } catch (error) {
@@ -290,7 +280,6 @@ exports.getNewsContent = async (req, res) => {
     if (!dataEntry) {
       return res.status(404).json({ message: "DataEntry not found" });
     }
-    console.log(dataEntry);
     
     res.status(200).json({ newsContent: dataEntry[0].newsContent });
   } catch (error) {

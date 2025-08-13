@@ -21,8 +21,8 @@ const storeOtpLogin = (key, otp) => {
 // @access  Public
 const register = async (req, res, next) => {
   try {
+    
     const { name, email, password, gender, dob, phone } = req.body;
-
     // Check if user exists
     const userExists = await User.findOne({ email });
 
@@ -32,6 +32,8 @@ const register = async (req, res, next) => {
         message: MESSAGES.EMAIL_EXISTS,
       });
     }
+
+    
 
     // Create user
     const user = await User.create({
@@ -81,8 +83,6 @@ const register = async (req, res, next) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
-    // Find user by email
-    console.log(email, password);
 
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
@@ -97,7 +97,7 @@ const login = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Invalid email or password" });
     }
-    console.log("Last");
+  
 
     // // Success
     //  res.json({
@@ -237,7 +237,7 @@ const verifyOtpLogin = async (req, res) => {
 const getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    console.log(user);
+
     if (!user) {
       return res.status(STATUS_CODES.NOT_FOUND).json({
         success: false,

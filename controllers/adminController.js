@@ -678,13 +678,6 @@ const addMemberToSubscription = async (req, res) => {
 
     await user.save();
 
-    // Log the admin action
-    console.log(
-      `[ADMIN ACTION] Member added to subscription: ${
-        user.email
-      } (${subscriptionType}) by admin at ${new Date().toISOString()}`
-    );
-
     // Send subscription activation email
     sendSubscriptionActivationEmail(
       user.email,
