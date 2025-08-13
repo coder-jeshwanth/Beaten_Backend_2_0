@@ -42,7 +42,7 @@ const register = async (req, res, next) => {
       dob: dob || "",
       phone: phone || "",
     });
-    console.log(user);
+
     if (user) {
       // Send admin notification for new registration
       await sendAdminRegistrationNotification({
