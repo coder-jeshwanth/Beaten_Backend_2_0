@@ -138,7 +138,7 @@ const createOrder = async (req, res) => {
     if (populatedOrder.user && populatedOrder.user.email) {
       await sendOrderConfirmedEmail(
         populatedOrder.user.email,
-        order._id,
+        order.orderId,
         populatedOrder.user.name
       );
     }
@@ -146,7 +146,7 @@ const createOrder = async (req, res) => {
 
     // Send admin notification
     await sendAdminOrderNotification({
-      orderId: order._id,
+      orderId: order.orderId,
       userName: populatedOrder.user.name,
       userEmail: populatedOrder.user.email,
       totalPrice: finalPrice,
@@ -437,7 +437,7 @@ const updateOrderStatus = async (req, res) => {
 
     // Send admin notification for status change
     await sendAdminOrderStatusNotification({
-      orderId: order._id,
+      orderId: order.orderId,
       userName: order.user.name,
       userEmail: order.user.email,
       oldStatus: oldStatus,
@@ -541,14 +541,14 @@ if (order.shiprocketShipmentId) {
       await sendOrderStatusEmail(
         order.user.email,
         "cancelled",
-        order._id,
+        order.orderId,
         order.user.name
       );
     }
 
     // Send admin notification for order cancellation
     await sendAdminOrderStatusNotification({
-      orderId: order._id,
+      orderId: order.orderId,
       userName: order.user.name,
       userEmail: order.user.email,
       oldStatus: order.status,
