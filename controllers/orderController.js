@@ -195,11 +195,19 @@ const getMyOrders = async (req, res) => {
         originalPrice = order._doc.originalPrice;
         subscriptionDiscount = originalPrice - order.totalPrice;
       }
-      // Add totalGstForItem to each orderItem
-      const orderItemsWithGst = order.orderItems.map((item) => ({
-        ...item._doc,
-        totalGstForItem: +(item.gst * item.quantity).toFixed(2),
-      }));
+      // Add totalGstForItem to each orderItem and ensure full image URL
+      const orderItemsWithGst = order.orderItems.map((item) => {
+        // Ensure image URL is returned in full
+        const image = item.image && !item.image.startsWith('http') 
+          ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
+          : item.image;
+          
+        return {
+          ...item._doc,
+          image,
+          totalGstForItem: +(item.gst * item.quantity).toFixed(2),
+        };
+      });
       // Add totalGstForOrder at order level
       const totalGstForOrder = orderItemsWithGst.reduce(
         (sum, item) => sum + item.totalGstForItem,
@@ -240,13 +248,21 @@ const getAllOrders = async (req, res) => {
       .sort({ createdAt: -1 });
 
     const ordersWithGst = orders.map((order) => {
-      const orderItemsWithGst = order.orderItems.map((item) => ({
-        ...item._doc,
-        totalGstForItem: +(item.gst * item.quantity).toFixed(2),
-        // Add product details for invoice
-        sku: item.product?.sku || "BT-TS BLK-OS-L",
-        hsn: item.product?.hsn || "6109",
-      }));
+      const orderItemsWithGst = order.orderItems.map((item) => {
+        // Ensure image URL is returned in full
+        const image = item.image && !item.image.startsWith('http') 
+          ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
+          : item.image;
+        
+        return {
+          ...item._doc,
+          image,
+          totalGstForItem: +(item.gst * item.quantity).toFixed(2),
+          // Add product details for invoice
+          sku: item.product?.sku || "BT-TS BLK-OS-L",
+          hsn: item.product?.hsn || "6109",
+        };
+      });
 
       const totalGstForOrder = orderItemsWithGst.reduce(
         (sum, item) => sum + item.totalGstForItem,
@@ -295,13 +311,21 @@ const getOrderById = async (req, res) => {
       });
     }
 
-    const orderItemsWithGst = order.orderItems.map((item) => ({
-      ...item._doc,
-      totalGstForItem: +(item.gst * item.quantity).toFixed(2),
-      // Add product details for invoice
-      sku: item.product?.sku || "BT-TS BLK-OS-L",
-      hsn: item.product?.hsn || "6109",
-    }));
+    const orderItemsWithGst = order.orderItems.map((item) => {
+      // Ensure image URL is returned in full
+      const image = item.image && !item.image.startsWith('http') 
+        ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
+        : item.image;
+        
+      return {
+        ...item._doc,
+        image,
+        totalGstForItem: +(item.gst * item.quantity).toFixed(2),
+        // Add product details for invoice
+        sku: item.product?.sku || "BT-TS BLK-OS-L",
+        hsn: item.product?.hsn || "6109",
+      };
+    });
 
     const totalGstForOrder = orderItemsWithGst.reduce(
       (sum, item) => sum + item.totalGstForItem,
@@ -427,12 +451,27 @@ const updateOrderStatus = async (req, res) => {
 
     // Send email notification to user
     if (order.user && order.user.email) {
-      await sendOrderStatusEmail(
-        order.user.email,
-        status,
-        order.orderId,
-        order.user.name
-      );
+      if (status === 'delivered') {
+        // For delivered orders, include full order data for invoice generation
+        const fullOrder = await Order.findById(req.params.id)
+          .populate("user", "name email")
+          .populate("shippingAddress");
+        
+        await sendOrderStatusEmail(
+          order.user.email,
+          status,
+          order.orderId,
+          order.user.name,
+          fullOrder
+        );
+      } else {
+        await sendOrderStatusEmail(
+          order.user.email,
+          status,
+          order.orderId,
+          order.user.name
+        );
+      }
     }
 
     // Send admin notification for status change
@@ -473,10 +512,18 @@ const getMyOrderById = async (req, res) => {
         message: "Order not found",
       });
     }
-    const orderItemsWithGst = order.orderItems.map((item) => ({
-      ...item._doc,
-      totalGstForItem: +(item.gst * item.quantity).toFixed(2),
-    }));
+    const orderItemsWithGst = order.orderItems.map((item) => {
+      // Ensure image URL is returned in full
+      const image = item.image && !item.image.startsWith('http') 
+        ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
+        : item.image;
+        
+      return {
+        ...item._doc,
+        image,
+        totalGstForItem: +(item.gst * item.quantity).toFixed(2),
+      };
+    });
     const totalGstForOrder = orderItemsWithGst.reduce(
       (sum, item) => sum + item.totalGstForItem,
       0

@@ -97,9 +97,19 @@ const productSchema = new mongoose.Schema(
     ],
     specifications: {
       Material: String,
-      Fit: String,
       Care: String,
-      Origin: String,
+    },
+    material: {
+      type: String,
+      default: function() {
+        return this.specifications?.Material || "";
+      }
+    },
+    care: {
+      type: String,
+      default: function() {
+        return this.specifications?.Care || "";
+      }
     },
     inStock: {
       type: Boolean,
@@ -136,6 +146,10 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
     isBestSeller: {
+      type: Boolean,
+      default: false,
+    },
+    isBeatenExclusive: {
       type: Boolean,
       default: false,
     },

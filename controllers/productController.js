@@ -12,6 +12,7 @@ const getProducts = async (req, res) => {
       tags,
       isActive,
       isFeatured,
+      isBeatenExclusive,
       minPrice,
       maxPrice,
       color,
@@ -36,6 +37,9 @@ const getProducts = async (req, res) => {
     }
     if (isFeatured !== undefined) {
       filter.isFeatured = isFeatured === "true";
+    }
+    if (isBeatenExclusive !== undefined) {
+      filter.isBeatenExclusive = isBeatenExclusive === "true";
     }
     // Variant-based filtering
     if (color) {
@@ -87,12 +91,18 @@ const getProducts = async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    // Ensure all products have the isBeatenExclusive field
+    const productsWithDefaults = products.map(product => ({
+      ...product,
+      isBeatenExclusive: product.isBeatenExclusive ?? false
+    }));
+
     // Get total count for pagination
     const total = await Product.countDocuments(filter);
 
     res.json({
       success: true,
-      data: products,
+      data: productsWithDefaults,
       pagination: {
         currentPage: Number(page),
         totalPages: Math.ceil(total / Number(limit)),
@@ -127,7 +137,10 @@ const getProductById = async (req, res) => {
 
     res.json({
       success: true,
-      data: product,
+      data: {
+        ...product.toObject(),
+        isBeatenExclusive: product.isBeatenExclusive ?? false
+      },
     });
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -144,6 +157,23 @@ const getProductById = async (req, res) => {
 // @access  Private (Admin only)
 const createProduct = async (req, res) => {
   try {
+    console.log("Request body received:", JSON.stringify(req.body, null, 2));
+    console.log("isBeatenExclusive in request:", req.body.isBeatenExclusive);
+    
+    // Convert string numbers to actual numbers
+    if (req.body.price && typeof req.body.price === 'string') {
+      req.body.price = Number(req.body.price);
+    }
+    if (req.body.originalPrice && typeof req.body.originalPrice === 'string') {
+      req.body.originalPrice = Number(req.body.originalPrice);
+    }
+    if (req.body.stockQuantity && typeof req.body.stockQuantity === 'string') {
+      req.body.stockQuantity = Number(req.body.stockQuantity);
+    }
+    
+    // Remove any fields that are not in our schema
+    delete req.body.Beaten_Launch_Sale_Drop_1;
+    
     // Ensure images is always an array and image is the 0th index
     if (Array.isArray(req.body.images)) {
       if (req.body.images.length === 0 && req.body.image) {
@@ -156,7 +186,36 @@ const createProduct = async (req, res) => {
     } else if (req.body.image) {
       req.body.images = [req.body.image];
     }
+    
+    // Handle material and care fields
+    if (req.body.material) {
+      if (!req.body.specifications) req.body.specifications = {};
+      req.body.specifications.Material = req.body.material;
+    }
+    
+    if (req.body.care) {
+      if (!req.body.specifications) req.body.specifications = {};
+      req.body.specifications.Care = req.body.care;
+    }
+    
+    // Remove fit and origin from specifications if present
+    if (req.body.specifications) {
+      delete req.body.specifications.Fit;
+      delete req.body.specifications.Origin;
+    }
+    
+    // Ensure isBeatenExclusive is properly set
+    if (req.body.isBeatenExclusive === undefined) {
+      req.body.isBeatenExclusive = false;
+    }
+    
+    console.log("Final request body before creation:", JSON.stringify(req.body, null, 2));
+    console.log("isBeatenExclusive before creation:", req.body.isBeatenExclusive);
+    
     const product = await Product.create(req.body);
+    
+    console.log("Created product isBeatenExclusive:", product.isBeatenExclusive);
+    console.log("Created product:", JSON.stringify(product.toObject(), null, 2));
 
     res.status(201).json({
       success: true,
@@ -190,6 +249,24 @@ const updateProduct = async (req, res) => {
     } else if (req.body.image) {
       req.body.images = [req.body.image];
     }
+    
+    // Handle material and care fields
+    if (req.body.material) {
+      if (!req.body.specifications) req.body.specifications = {};
+      req.body.specifications.Material = req.body.material;
+    }
+    
+    if (req.body.care) {
+      if (!req.body.specifications) req.body.specifications = {};
+      req.body.specifications.Care = req.body.care;
+    }
+    
+    // Remove fit and origin from specifications if present
+    if (req.body.specifications) {
+      delete req.body.specifications.Fit;
+      delete req.body.specifications.Origin;
+    }
+    
     const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,

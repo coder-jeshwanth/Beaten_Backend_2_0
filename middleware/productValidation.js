@@ -71,6 +71,11 @@ const createProductValidation = [
     .withMessage("Image is required")
     .isString()
     .withMessage("Image must be a string"),
+
+  body("isBeatenExclusive")
+    .optional()
+    .isBoolean()
+    .withMessage("isBeatenExclusive must be a boolean"),
 ];
 
 // Validation rules for updating a product (only required fields, but all optional)
@@ -111,6 +116,15 @@ const updateProductValidation = [
     .withMessage("Price must be a positive number"),
 
   body("image").optional().isString().withMessage("Image must be a string"),
+  
+  body("material").optional().isString().withMessage("Material must be a string"),
+  
+  body("care").optional().isString().withMessage("Care must be a string"),
+
+  body("isBeatenExclusive")
+    .optional()
+    .isBoolean()
+    .withMessage("isBeatenExclusive must be a boolean"),
 ];
 
 // Middleware to handle validation errors

@@ -1,5 +1,130 @@
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
+// Generate Invoice HTML
+const generateInvoiceHTML = (order, shippingAddress) => {
+  const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN");
+  const currentDate = new Date().toLocaleDateString("en-IN");
+  
+  // Calculate totals
+  const subtotal = order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalGST = order.orderItems.reduce((sum, item) => sum + (item.gst * item.quantity), 0);
+  const discountAmount = order.coupon?.discountAmount || 0;
+  const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
+  const totalDiscount = discountAmount + subscriptionDiscount;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Invoice #${order.invoiceId}</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+        .invoice-header { text-align: center; border-bottom: 2px solid #ff9900; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { font-size: 28px; font-weight: bold; color: #ff9900; margin-bottom: 5px; }
+        .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .invoice-info div { flex: 1; }
+        .section-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .order-table th, .order-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        .order-table th { background-color: #f8f9fa; font-weight: bold; }
+        .totals-section { float: right; width: 300px; margin-top: 20px; }
+        .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .total-row.final { font-weight: bold; font-size: 18px; border-top: 2px solid #ff9900; padding-top: 10px; }
+        .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="invoice-header">
+        <div class="company-name">BEATEN</div>
+        <div class="invoice-title">TAX INVOICE</div>
+        <div>Invoice #${order.invoiceId}</div>
+      </div>
+      
+      <div class="invoice-info">
+        <div>
+          <div class="section-title">Bill To:</div>
+          <div>${shippingAddress.fullName}</div>
+          <div>${shippingAddress.addressLine1}</div>
+          ${shippingAddress.addressLine2 ? `<div>${shippingAddress.addressLine2}</div>` : ''}
+          <div>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}</div>
+          <div>${shippingAddress.country}</div>
+          <div>Phone: ${shippingAddress.phoneNumber}</div>
+        </div>
+        <div>
+          <div class="section-title">Invoice Details:</div>
+          <div><strong>Order ID:</strong> ${order.orderId}</div>
+          <div><strong>Order Date:</strong> ${orderDate}</div>
+          <div><strong>Invoice Date:</strong> ${currentDate}</div>
+          <div><strong>Payment Method:</strong> ${order.paymentInfo?.method || 'ONLINE'}</div>
+          <div><strong>AWB Number:</strong> ${order.awbNumber}</div>
+        </div>
+      </div>
+
+      <table class="order-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>HSN/SAC</th>
+            <th>Size</th>
+            <th>Color</th>
+            <th>Qty</th>
+            <th>Rate</th>
+            <th>GST</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${order.orderItems.map(item => `
+            <tr>
+              <td>${item.name}</td>
+              <td>6109</td>
+              <td>${item.size || '-'}</td>
+              <td>${item.color || '-'}</td>
+              <td>${item.quantity}</td>
+              <td>₹${item.price}</td>
+              <td>₹${(item.gst * item.quantity).toFixed(2)}</td>
+              <td>₹${(item.price * item.quantity).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="totals-section">
+        <div class="total-row">
+          <span>Subtotal:</span>
+          <span>₹${subtotal.toFixed(2)}</span>
+        </div>
+        <div class="total-row">
+          <span>Total GST:</span>
+          <span>₹${totalGST.toFixed(2)}</span>
+        </div>
+        ${totalDiscount > 0 ? `
+          <div class="total-row">
+            <span>Discount:</span>
+            <span>-₹${totalDiscount.toFixed(2)}</span>
+          </div>
+        ` : ''}
+        <div class="total-row final">
+          <span>Total Amount:</span>
+          <span>₹${order.totalPrice.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div style="clear: both;"></div>
+
+      <div class="footer">
+        <div>Thank you for shopping with BEATEN!</div>
+        <div>For any queries, contact us at support@beaten.in</div>
+      </div>
+    </body>
+    </html>
+  `;
+};
 
 // Create transporter
 const createTransporter = () => {
@@ -430,7 +555,7 @@ const sendPasswordResetSuccessEmail = async (email, userType = "user") => {
 };
 
 // Send order status update email
-const sendOrderStatusEmail = async (email, status, orderId, userName) => {
+const sendOrderStatusEmail = async (email, status, orderId, userName, orderData = null) => {
   try {
     const transporter = createTransporter();
     const statusMessages = {
@@ -441,21 +566,25 @@ const sendOrderStatusEmail = async (email, status, orderId, userName) => {
       delivered: "Your order has been delivered!",
       cancelled: "Your order has been cancelled.",
     };
+    
     const subject = `Order #${orderId} Status Update: ${
       status.charAt(0).toUpperCase() + status.slice(1)
     }`;
-    const htmlContent = `
+    
+    let htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f9f9f9;">
         <h2 style="color: #1a1a1a;">Hi ${userName || ""},</h2>
         <p>Your order <b>#${orderId}</b> status has been updated to <b>${
       status.charAt(0).toUpperCase() + status.slice(1)
     }</b>.</p>
         <p>${statusMessages[status] || "Order status updated."}</p>
+        ${status === 'delivered' ? '<p><strong>Your invoice is attached to this email for your records.</strong></p>' : ''}
         <p>Thank you for shopping with BEATEN!</p>
         <hr style="margin: 32px 0;" />
         <p style="font-size: 13px; color: #888;">This is an automated email. Please do not reply.</p>
       </div>
     `;
+
     const mailOptions = {
       from: `"BEATEN" <${
         process.env.EMAIL_USER || "laptoptest7788@gmail.com"
@@ -464,6 +593,25 @@ const sendOrderStatusEmail = async (email, status, orderId, userName) => {
       subject,
       html: htmlContent,
     };
+
+    // If status is delivered and order data is provided, attach invoice
+    if (status === 'delivered' && orderData && orderData.shippingAddress) {
+      try {
+        const invoiceHTML = generateInvoiceHTML(orderData, orderData.shippingAddress);
+        
+        mailOptions.attachments = [
+          {
+            filename: `Invoice_${orderData.invoiceId || orderId}.html`,
+            content: invoiceHTML,
+            contentType: 'text/html'
+          }
+        ];
+      } catch (invoiceError) {
+        console.error("Error generating invoice:", invoiceError);
+        // Continue sending email without invoice if there's an error
+      }
+    }
+
     const info = await transporter.sendMail(mailOptions);
     console.log("Order status email sent:", info.messageId);
     return true;
