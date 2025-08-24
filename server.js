@@ -12,7 +12,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000","https://beaten-customer-panel.onrender.com","https://beaten-admin.onrender.com", "http://localhost:3001", "https://beaten1-1.onrender.com","https://beaten1-2.onrender.com", "*"],
+    origin: ["https://beaten-admin-zu8d.onrender.com","http://localhost:3000","https://beaten-customer-panel.onrender.com","https://beaten-admin.onrender.com", "http://localhost:3001", "https://beaten1-1.onrender.com","https://beaten1-2.onrender.com", "*"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
