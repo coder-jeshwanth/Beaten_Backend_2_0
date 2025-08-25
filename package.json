@@ -40,6 +40,7 @@
     "pdf-lib": "^1.17.1",
     "pdfkit": "^0.17.1",
     "puppeteer-core": "^24.17.0",
+    "qrcode": "^1.5.4",
     "razorpay": "^2.9.6"
   },
   "devDependencies": {
