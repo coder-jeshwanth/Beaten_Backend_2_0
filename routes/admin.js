@@ -161,7 +161,7 @@ router.patch("/returns/:id/status", protectAdmin, async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
     if (
-      !["pending", "approved", "rejected", "return_rejected"].includes(status)
+      !["pending", "approved", "rejected", "return_rejected", "completed"].includes(status)
     ) {
       return res.status(400).json({ message: "Invalid status" });
     }
