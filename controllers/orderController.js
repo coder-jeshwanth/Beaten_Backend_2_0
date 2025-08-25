@@ -459,6 +459,12 @@ const updateOrderStatus = async (req, res) => {
       }
     }
 
+    // If status is return_completed, mark the return process as finished
+    if (status === "return_completed") {
+      order.returnCompletedAt = new Date();
+      console.log("Return process completed for order:", order.orderId);
+    }
+
     // Send email notification to user
     if (order.user && order.user.email) {
       if (status === 'delivered') {

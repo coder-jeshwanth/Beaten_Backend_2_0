@@ -806,6 +806,9 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
       "out-for-delivery": "Your order is out for delivery!",
       delivered: "Your order has been delivered!",
       cancelled: "Your order has been cancelled.",
+      return_approved: "Your return request has been approved!",
+      return_rejected: "Your return request has been rejected.",
+      return_completed: "Your return has been completed successfully!",
     };
     
     const subject = `Order #${orderId} Status Update: ${
@@ -1743,6 +1746,66 @@ const sendSubscriptionReminderEmail = async (email, name, subscriptionEnd) => {
   }
 };
 
+// Send custom message email to subscribers
+const sendCustomMessageEmail = async (email, name, subject, message, includeUnsubscribeLink = true) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Create unsubscribe link (you may want to implement actual unsubscribe functionality)
+    const unsubscribeSection = includeUnsubscribeLink ? `
+      <hr style="margin: 32px 0; border: none; border-top: 1px solid #FF6B35;" />
+      <p style="font-size: 12px; color: #888; text-align: center;">
+        If you don't want to receive these emails, you can 
+        <a href="https://beaten.in/unsubscribe?email=${encodeURIComponent(email)}" style="color: #FF6B35;">unsubscribe here</a>.
+      </p>
+    ` : '';
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #ffffff; border-radius: 12px; border: 2px solid #FF6B35; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #FF6B35; margin-bottom: 8px; font-size: 28px;">BEATEN</h1>
+          <div style="width: 60px; height: 3px; background: #FF6B35; margin: 0 auto;"></div>
+        </div>
+        
+        <h2 style="color: #1a1a1a; margin-bottom: 8px;">Hi ${name || "Valued Customer"},</h2>
+        
+        <div style="background: #f8f9fa; padding: 24px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #FF6B35;">
+          ${message.split('\n').map(paragraph => `<p style="font-size: 16px; color: #333; line-height: 1.6; margin-bottom: 16px;">${paragraph}</p>`).join('')}
+        </div>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="https://beaten.in" style="background: #FF6B35; color: #fff; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-size: 16px; font-weight: bold;">Visit BEATEN</a>
+        </div>
+        
+        <p style="font-size: 14px; color: #666; text-align: center;">
+          Thank you for being a valued member of <strong>BEATEN</strong>!<br/>
+          We appreciate your continued support.
+        </p>
+        
+        ${unsubscribeSection}
+        
+        <p style="font-size: 13px; color: #888; text-align: center; margin-top: 16px;">
+          This email was sent to you because you are a BEATEN subscriber.
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"BEATEN" <${process.env.EMAIL_USER || "support@beaten.in"}>`,
+      to: email,
+      subject: subject,
+      html: htmlContent,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Custom message email sent to ${email}:`, info.messageId);
+    return true;
+  } catch (error) {
+    console.error(`Error sending custom message email to ${email}:`, error);
+    return false;
+  }
+};
+
 // @desc    Send subscription activation email
 // @param   email - user email
 // @param   name - user name
@@ -1949,5 +2012,6 @@ module.exports = {
   sendAdminReturnNotification,
   sendUserNotificationEmail,
   sendSubscriptionReminderEmail,
+  sendCustomMessageEmail,
   sendSubscriptionActivationEmail,
 };

@@ -14,6 +14,8 @@ const {
   cachedAnalytics,
   getAllSubscriptions, // <-- add import
   sendSubscriptionReminder,
+  sendBulkSubscriptionReminder,
+  sendBulkMessageToSubscribers,
   addMemberToSubscription,
 } = require("../controllers/adminController");
 const User = require("../models/User");
@@ -95,6 +97,18 @@ router.post(
   sendSubscriptionReminder
 );
 
+// Add new route for sending bulk subscription reminder emails
+router.post(
+  "/dashboard/send-bulk-subscription-reminder",
+  sendBulkSubscriptionReminder
+);
+
+// Add new route for sending custom messages to all subscribers
+router.post(
+  "/dashboard/send-bulk-message",
+  sendBulkMessageToSubscribers
+);
+
 // Add new route for adding member to subscription
 router.post("/dashboard/add-member", addMemberToSubscription);
 
@@ -106,8 +120,16 @@ router.get("/dashboard/cached", cachedAnalytics);
 // List all returns
 router.get("/returns", protectAdmin, async (req, res) => {
   try {
-    // Aggregate all returns from all users
-    const users = await User.find({}, "email phone returns");
+    // Aggregate all returns from all users with populated order data
+    const users = await User.find({}, "email phone returns")
+      .populate({
+        path: "returns.orderId",
+        select: "orderId", // Get the human-readable orderId from Order model
+      })
+      .populate({
+        path: "returns.productId",
+        select: "name", // Get product name for better display
+      });
 
     const allReturns = [];
     users.forEach((user) => {
@@ -115,9 +137,16 @@ router.get("/returns", protectAdmin, async (req, res) => {
         allReturns.push({
           _id: ret._id,
           userId: user._id,
-
           user: { email: user.email, phone: user.phone },
-          ...ret.toObject(),
+          orderId: ret.orderId?.orderId || ret.orderId, // Use human-readable orderId
+          orderObjectId: ret.orderId?._id, // Keep original ObjectId for reference
+          productId: ret.productId?._id || ret.productId,
+          productName: ret.productId?.name || "Unknown Product",
+          reason: ret.reason,
+          status: ret.status,
+          rejectionReason: ret.rejectionReason || "",
+          received: ret.received || false,
+          date: ret.date,
         });
       });
     });

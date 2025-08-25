@@ -7,6 +7,7 @@ const Product = require("../models/Product");
 const {
   sendSubscriptionReminderEmail,
   sendSubscriptionActivationEmail,
+  sendCustomMessageEmail,
 } = require("../utils/emailService");
 
 // @desc    Register admin
@@ -589,6 +590,159 @@ const sendSubscriptionReminder = async (req, res) => {
   }
 };
 
+// @desc    Send subscription reminder emails to all subscribed users
+// @route   POST /api/admin/dashboard/send-bulk-subscription-reminder
+// @access  Private (Admin only)
+const sendBulkSubscriptionReminder = async (req, res) => {
+  try {
+    // Get all subscribed users
+    const users = await User.find({}, "name email subscription");
+    const subscribedUsers = users.filter(
+      (user) =>
+        user.subscription &&
+        user.subscription.isSubscribed &&
+        user.subscription.subscriptionExpiry
+    );
+
+    if (subscribedUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: "No subscribed users found.",
+        data: { totalSent: 0, failed: 0 }
+      });
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+    const failedEmails = [];
+
+    // Send reminders to all subscribed users
+    for (const user of subscribedUsers) {
+      try {
+        const result = await sendSubscriptionReminderEmail(
+          user.email,
+          user.name,
+          user.subscription.subscriptionExpiry
+        );
+        
+        if (result) {
+          successCount++;
+        } else {
+          failureCount++;
+          failedEmails.push(user.email);
+        }
+        
+        // Add small delay between emails to avoid overwhelming the email service
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (emailError) {
+        console.error(`Failed to send reminder to ${user.email}:`, emailError);
+        failureCount++;
+        failedEmails.push(user.email);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk reminder emails sent successfully. ${successCount} sent, ${failureCount} failed.`,
+      data: {
+        totalUsers: subscribedUsers.length,
+        totalSent: successCount,
+        failed: failureCount,
+        failedEmails: failedEmails
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send bulk reminder emails.",
+    });
+  }
+};
+
+// @desc    Send custom message to all subscribed users
+// @route   POST /api/admin/dashboard/send-bulk-message
+// @access  Private (Admin only)
+const sendBulkMessageToSubscribers = async (req, res) => {
+  try {
+    const { subject, message, includeUnsubscribeLink = true } = req.body;
+
+    // Validate required fields
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and message are required.",
+      });
+    }
+
+    // Get all subscribed users
+    const users = await User.find({}, "name email subscription");
+    const subscribedUsers = users.filter(
+      (user) =>
+        user.subscription &&
+        user.subscription.isSubscribed &&
+        user.subscription.subscriptionExpiry
+    );
+
+    if (subscribedUsers.length === 0) {
+      return res.json({
+        success: true,
+        message: "No subscribed users found.",
+        data: { totalSent: 0, failed: 0 }
+      });
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+    const failedEmails = [];
+
+    // Send custom message to all subscribed users
+    for (const user of subscribedUsers) {
+      try {
+        const result = await sendCustomMessageEmail(
+          user.email,
+          user.name,
+          subject,
+          message,
+          includeUnsubscribeLink
+        );
+        
+        if (result) {
+          successCount++;
+        } else {
+          failureCount++;
+          failedEmails.push(user.email);
+        }
+        
+        // Add small delay between emails to avoid overwhelming the email service
+        await new Promise(resolve => setTimeout(resolve, 150));
+      } catch (emailError) {
+        console.error(`Failed to send message to ${user.email}:`, emailError);
+        failureCount++;
+        failedEmails.push(user.email);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk message sent successfully. ${successCount} sent, ${failureCount} failed.`,
+      data: {
+        totalUsers: subscribedUsers.length,
+        totalSent: successCount,
+        failed: failureCount,
+        failedEmails: failedEmails,
+        messageSubject: subject
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send bulk message.",
+    });
+  }
+};
+
 // @desc    Add member to subscription by email
 // @route   POST /api/admin/dashboard/add-member
 // @access  Private (Admin only)
@@ -722,5 +876,7 @@ module.exports = {
   getAllSubscriptions,
   cachedAnalytics,
   sendSubscriptionReminder,
+  sendBulkSubscriptionReminder,
+  sendBulkMessageToSubscribers,
   addMemberToSubscription,
 };
