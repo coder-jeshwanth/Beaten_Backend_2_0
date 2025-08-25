@@ -2,8 +2,140 @@ const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const PDFDocument = require('pdfkit');
 
-// Generate Invoice HTML
+// Generate Invoice PDF
+const generateInvoicePDF = (order, shippingAddress) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN");
+      const currentDate = new Date().toLocaleDateString("en-IN");
+      
+      // Calculate totals
+      const subtotal = order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const totalGST = order.orderItems.reduce((sum, item) => sum + (item.gst * item.quantity), 0);
+      const discountAmount = order.coupon?.discountAmount || 0;
+      const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
+      const totalDiscount = discountAmount + subscriptionDiscount;
+      
+      // Create PDF document
+      const doc = new PDFDocument({margin: 50});
+      const chunks = [];
+      
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', err => reject(err));
+      
+      // Add invoice header
+      doc.fontSize(20).text('BEATEN', {align: 'center'});
+      doc.fontSize(16).text('TAX INVOICE', {align: 'center'});
+      doc.fontSize(12).text(`Invoice #${order.invoiceId || order.orderId}`, {align: 'center'});
+      doc.moveDown(2);
+      
+      // Add billing information in two columns
+      doc.fontSize(12);
+      const startY = doc.y;
+      
+      // Left column - Billing address
+      doc.text('Bill To:', {continued: false});
+      doc.text(shippingAddress.fullName);
+      doc.text(shippingAddress.addressLine1);
+      if (shippingAddress.addressLine2) {
+        doc.text(shippingAddress.addressLine2);
+      }
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}`);
+      doc.text(shippingAddress.country);
+      doc.text(`Phone: ${shippingAddress.phoneNumber}`);
+      
+      // Right column - Invoice details
+      doc.text('Invoice Details:', {x: 300, y: startY});
+      doc.text(`Order ID: ${order.orderId}`, {x: 300});
+      doc.text(`Order Date: ${orderDate}`, {x: 300});
+      doc.text(`Invoice Date: ${currentDate}`, {x: 300});
+      doc.text(`Payment Method: ${order.paymentInfo?.method || 'ONLINE'}`, {x: 300});
+      doc.text(`AWB Number: ${order.awbNumber || 'N/A'}`, {x: 300});
+      
+      doc.moveDown(2);
+      
+      // Add item table
+      const tableTop = doc.y;
+      const tableHeaders = ['Item', 'HSN', 'Size', 'Color', 'Qty', 'Rate', 'GST', 'Amount'];
+      const tableWidths = [150, 50, 50, 50, 30, 60, 60, 60];
+      let tableX = 50;
+      
+      // Draw table headers
+      tableHeaders.forEach((header, i) => {
+        doc.text(header, tableX, tableTop, {width: tableWidths[i], align: 'left'});
+        tableX += tableWidths[i];
+      });
+      
+      // Draw a line under headers
+      doc.moveTo(50, tableTop + 20).lineTo(550, tableTop + 20).stroke();
+      let tableY = tableTop + 30;
+      
+      // Draw table rows
+      order.orderItems.forEach((item) => {
+        tableX = 50;
+        doc.text(item.name, tableX, tableY, {width: tableWidths[0], align: 'left'});
+        tableX += tableWidths[0];
+        
+        doc.text('6109', tableX, tableY, {width: tableWidths[1], align: 'left'});
+        tableX += tableWidths[1];
+        
+        doc.text(item.size || '-', tableX, tableY, {width: tableWidths[2], align: 'left'});
+        tableX += tableWidths[2];
+        
+        doc.text(item.color || '-', tableX, tableY, {width: tableWidths[3], align: 'left'});
+        tableX += tableWidths[3];
+        
+        doc.text(item.quantity.toString(), tableX, tableY, {width: tableWidths[4], align: 'left'});
+        tableX += tableWidths[4];
+        
+        doc.text(`₹${item.price.toFixed(2)}`, tableX, tableY, {width: tableWidths[5], align: 'left'});
+        tableX += tableWidths[5];
+        
+        doc.text(`₹${(item.gst * item.quantity).toFixed(2)}`, tableX, tableY, {width: tableWidths[6], align: 'left'});
+        tableX += tableWidths[6];
+        
+        doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, tableX, tableY, {width: tableWidths[7], align: 'left'});
+        
+        tableY += 20;
+      });
+      
+      // Draw a line under the items
+      doc.moveTo(50, tableY + 10).lineTo(550, tableY + 10).stroke();
+      tableY += 20;
+      
+      // Add totals
+      doc.text(`Subtotal: ₹${subtotal.toFixed(2)}`, 400, tableY);
+      tableY += 20;
+      doc.text(`Total GST: ₹${totalGST.toFixed(2)}`, 400, tableY);
+      tableY += 20;
+      
+      if (totalDiscount > 0) {
+        doc.text(`Discount: -₹${totalDiscount.toFixed(2)}`, 400, tableY);
+        tableY += 20;
+      }
+      
+      // Draw a line above the final total
+      doc.moveTo(400, tableY).lineTo(550, tableY).stroke();
+      tableY += 10;
+      
+      // Final total in bold
+      doc.font('Helvetica-Bold').text(`Total Amount: ₹${order.totalPrice.toFixed(2)}`, 400, tableY);
+      
+      // Add footer
+      doc.fontSize(10).text('Thank you for shopping with BEATEN!', 50, 700, {align: 'center'});
+      doc.text('For any queries, contact us at support@beaten.in', {align: 'center'});
+      
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+// Generate Invoice HTML (keep for backward compatibility)
 const generateInvoiceHTML = (order, shippingAddress) => {
   const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN");
   const currentDate = new Date().toLocaleDateString("en-IN");
@@ -594,21 +726,40 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
       html: htmlContent,
     };
 
-    // If status is delivered and order data is provided, attach invoice
+    // If status is delivered and order data is provided, attach invoice as PDF
     if (status === 'delivered' && orderData && orderData.shippingAddress) {
       try {
-        const invoiceHTML = generateInvoiceHTML(orderData, orderData.shippingAddress);
+        // Generate PDF invoice
+        const pdfBuffer = await generateInvoicePDF(orderData, orderData.shippingAddress);
         
+        // Attach the PDF to the email
         mailOptions.attachments = [
           {
-            filename: `Invoice_${orderData.invoiceId || orderId}.html`,
-            content: invoiceHTML,
-            contentType: 'text/html'
+            filename: `Invoice_${orderData.invoiceId || orderId}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
           }
         ];
       } catch (invoiceError) {
-        console.error("Error generating invoice:", invoiceError);
-        // Continue sending email without invoice if there's an error
+        console.error("Error generating PDF invoice:", invoiceError);
+        
+        try {
+          // Fallback to HTML if PDF generation fails
+          const invoiceHTML = generateInvoiceHTML(orderData, orderData.shippingAddress);
+          
+          mailOptions.attachments = [
+            {
+              filename: `Invoice_${orderData.invoiceId || orderId}.html`,
+              content: invoiceHTML,
+              contentType: 'text/html'
+            }
+          ];
+          
+          console.log("Falling back to HTML invoice due to PDF generation error");
+        } catch (htmlError) {
+          console.error("Error generating HTML invoice:", htmlError);
+          // Continue sending email without invoice if there's an error
+        }
       }
     }
 
