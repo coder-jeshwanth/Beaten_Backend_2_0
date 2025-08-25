@@ -197,10 +197,15 @@ const getMyOrders = async (req, res) => {
       }
       // Add totalGstForItem to each orderItem and ensure full image URL
       const orderItemsWithGst = order.orderItems.map((item) => {
-        // Ensure image URL is returned in full
-        const image = item.image && !item.image.startsWith('http') 
-          ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
-          : item.image;
+        // Extract only the filename and extension from the image path
+        let image = item.image;
+        if (item.image) {
+          // If it's a full URL, extract just the filename
+          if (item.image.startsWith('http')) {
+            const urlParts = item.image.split('/');
+            image = urlParts[urlParts.length - 1]; // Get just the filename
+          }
+        }
           
         return {
           ...item._doc,
@@ -249,10 +254,15 @@ const getAllOrders = async (req, res) => {
 
     const ordersWithGst = orders.map((order) => {
       const orderItemsWithGst = order.orderItems.map((item) => {
-        // Ensure image URL is returned in full
-        const image = item.image && !item.image.startsWith('http') 
-          ? `https://res.cloudinary.com/di9lv1bgh/image/upload/${item.image}` 
-          : item.image;
+        // Extract only the filename and extension from the image path
+        let image = item.image;
+        if (item.image) {
+          // If it's a full URL, extract just the filename
+          if (item.image.startsWith('http')) {
+            const urlParts = item.image.split('/');
+            image = urlParts[urlParts.length - 1]; // Get just the filename
+          }
+        }
         
         return {
           ...item._doc,
