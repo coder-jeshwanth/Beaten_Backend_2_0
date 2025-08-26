@@ -121,7 +121,7 @@ router.post("/return", protect, async (req, res) => {
 router.get("/returns", protect, async (req, res) => {
   try {
     const userId = req.user._id || req.user.id;
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).populate('returns.orderId');
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Populate product info for each return
@@ -134,6 +134,7 @@ router.get("/returns", protect, async (req, res) => {
         } catch (e) {}
         return {
           ...ret.toObject(),
+          orderId: ret.orderId?.orderId || ret.orderId, // Use human-readable orderId
           productName: product ? product.name : "Product Name",
           productImage: product ? product.image : "",
         };
