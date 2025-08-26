@@ -170,6 +170,10 @@ const productSchema = new mongoose.Schema(
       min: 0,
       default: 0,
     },
+      variantStock: {
+        type: Object,
+        default: {},
+      },
   },
   {
     timestamps: true,
