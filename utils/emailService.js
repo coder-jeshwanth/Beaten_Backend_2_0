@@ -934,14 +934,40 @@ const sendReturnPlacedEmail = async (
 ) => {
   try {
     const transporter = createTransporter();
-    const subject = `Return Request Placed for Order #${orderId}`;
+    
+    // Get order and product details
+    const Order = require("../models/Order");
+    const Product = require("../models/Product");
+    
+    let humanReadableOrderId = orderId;
+    let productName = "Product";
+    
+    try {
+      const order = await Order.findById(orderId);
+      if (order && order.orderId) {
+        humanReadableOrderId = order.orderId;
+      }
+    } catch (e) {
+      console.log("Could not fetch order details:", e.message);
+    }
+    
+    try {
+      const product = await Product.findById(productId);
+      if (product && product.name) {
+        productName = product.name;
+      }
+    } catch (e) {
+      console.log("Could not fetch product details:", e.message);
+    }
+    
+    const subject = `Return Request Placed for Order #${humanReadableOrderId}`;
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f9f9f9;">
         <h2 style="color: #1a1a1a;">Hi ${userName || ""},</h2>
         <p>We have received your return request for:</p>
         <ul>
-          <li><b>Order ID:</b> ${orderId}</li>
-          <li><b>Product ID:</b> ${productId}</li>
+          <li><b>Order ID:</b> ${humanReadableOrderId}</li>
+          <li><b>Product:</b> ${productName}</li>
           <li><b>Reason:</b> ${reason}</li>
         </ul>
         <p>Our team will review your request and update you soon.</p>
