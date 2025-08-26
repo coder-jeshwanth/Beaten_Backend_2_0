@@ -166,7 +166,7 @@ router.patch("/returns/:id/status", protectAdmin, async (req, res) => {
       return res.status(400).json({ message: "Invalid status" });
     }
     // Find the user and return by return _id
-    const user = await User.findOne({ "returns._id": req.params.id });
+    const user = await User.findOne({ "returns._id": req.params.id }).populate('returns.orderId');
     if (!user) return res.status(404).json({ message: "Return not found" });
     const ret = user.returns.id(req.params.id);
     if (!ret) return res.status(404).json({ message: "Return not found" });
@@ -194,10 +194,11 @@ router.patch("/returns/:id/status", protectAdmin, async (req, res) => {
     }
 
     // Send return status update email
+    const humanReadableOrderId = ret.orderId?.orderId || ret.orderId;
     sendReturnStatusEmail(
       user.email,
       user.name,
-      ret.orderId,
+      humanReadableOrderId,
       ret.productId,
       status
     ).catch(console.error);
