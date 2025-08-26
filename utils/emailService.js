@@ -945,6 +945,59 @@ const sendReturnPlacedEmail = async (
           <li><b>Reason:</b> ${reason}</li>
         </ul>
         <p>Our team will review your request and update you soon.</p>
+        
+        <div style="margin: 32px 0; padding: 24px; background: #ffffff; border-radius: 8px; border: 1px solid #e0e0e0;">
+          <h3 style="color: #1a1a1a; margin-top: 0;">📜 Beaten – Return & Refund Policy</h3>
+          <p>At Beaten, we want you to love what you wear. If something doesn't fit or meet your expectations, we're here to help.</p>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">🔄 Returns & Exchanges</h4>
+          <ul>
+            <li>Returns/exchanges are accepted within 7 days of delivery.</li>
+            <li>Products must be unused, unwashed, with original tags & packaging.</li>
+            <li>Once we receive the returned product and complete our Quality Check (QC), we will process your request.</li>
+          </ul>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">💳 Refunds for Prepaid Orders</h4>
+          <ul>
+            <li>For prepaid (online payment) orders, refunds are processed to the original payment method within 5–7 working days after QC.</li>
+          </ul>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">💰 Refunds for COD Orders</h4>
+          <p>Since COD orders are paid in cash to the courier, we cannot issue cash refunds at the doorstep. Instead:</p>
+          <ul>
+            <li>Refunds will be made via UPI / Bank Transfer only.</li>
+            <li>Once your return is approved, our support team will contact you to collect your UPI ID or bank account details.</li>
+            <li>Refunds will be processed within 5–7 working days after QC.</li>
+          </ul>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">🔁 Exchange Option</h4>
+          <ul>
+            <li>If you prefer, instead of a refund, you can request an exchange for a different size/product (subject to stock availability).</li>
+            <li>Exchange shipping charges may apply for COD customers.</li>
+          </ul>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">🚫 Non-Returnable Items</h4>
+          <ul>
+            <li>Innerwear, socks, and accessories are not eligible for return/exchange for hygiene reasons.</li>
+          </ul>
+          
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+          
+          <h4 style="color: #1a1a1a;">📞 Need Help?</h4>
+          <p>For any return or refund queries, contact us at:</p>
+          <p>📧 support@beaten.in | 📱 +91 7799120325</p>
+        </div>
+        
         <p>Thank you for shopping with BEATEN!</p>
         <hr style="margin: 32px 0;" />
         <p style="font-size: 13px; color: #888;">This is an automated email. Please do not reply.</p>
