@@ -1056,11 +1056,35 @@ const sendReturnStatusEmail = async (
 ) => {
   try {
     const transporter = createTransporter();
-    const statusText = status === "approved" ? "Approved" : "Rejected";
-    const statusMsg =
-      status === "approved"
-        ? "Your return request has been approved. Please follow the instructions for returning your product."
-        : "Your return request has been rejected. If you have questions, please contact support.";
+    
+    let statusText, statusMsg;
+    
+    switch (status) {
+      case "approved":
+        statusText = "Approved";
+        statusMsg = "Your return request has been approved. Please follow the instructions for returning your product.";
+        break;
+      case "rejected":
+        statusText = "Rejected";
+        statusMsg = "Your return request has been rejected. If you have questions, please contact support.";
+        break;
+      case "return_rejected":
+        statusText = "Rejected";
+        statusMsg = "Your return request has been rejected after review. If you have questions, please contact support.";
+        break;
+      case "completed":
+        statusText = "Completed";
+        statusMsg = "Your return has been successfully completed and processed. Thank you for choosing BEATEN!";
+        break;
+      case "pending":
+        statusText = "Under Review";
+        statusMsg = "Your return request is currently under review. We will update you soon.";
+        break;
+      default:
+        statusText = "Updated";
+        statusMsg = "Your return request status has been updated. Please contact support for more information.";
+    }
+    
     const subject = `Return Request ${statusText} for Order #${orderId}`;
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f9f9f9;">
