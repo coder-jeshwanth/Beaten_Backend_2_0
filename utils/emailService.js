@@ -1057,6 +1057,18 @@ const sendReturnStatusEmail = async (
   try {
     const transporter = createTransporter();
     
+    // Get product details for all statuses
+    let productName = productId; // Default fallback
+    try {
+      const Product = require("../models/Product");
+      const product = await Product.findById(productId);
+      if (product && product.name) {
+        productName = product.name;
+      }
+    } catch (e) {
+      console.log("Could not fetch product details:", e.message);
+    }
+    
     let statusText, statusMsg;
     
     switch (status) {
@@ -1092,7 +1104,7 @@ const sendReturnStatusEmail = async (
         <p>Your return request for:</p>
         <ul>
           <li><b>Order ID:</b> ${orderId}</li>
-          <li><b>Product ID:</b> ${productId}</li>
+          <li><b>Product:</b> ${productName}</li>
         </ul>
         <p><b>Status:</b> ${statusText}</p>
         <p>${statusMsg}</p>
