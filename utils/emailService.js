@@ -237,8 +237,9 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave, Patelguda, Beeramguda, Pincode : 502319', margin + 20, footerY + 175, {width: pageWidth - 40, align: 'center'});
       
       // Tagline and website
-      doc.fontSize(9).font('Helvetica').fillStyle('italic');
+      doc.fontSize(9).font('Helvetica-Oblique'); // Use Oblique for italic
       doc.text('Elevate your look with BEATEN.....', margin + 20, footerY + 190);
+      doc.fontSize(9).font('Helvetica');
       doc.text('www.beaten.in', pageWidth - 100, footerY + 190);
       
       doc.end();
@@ -916,24 +917,8 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
         ];
       } catch (invoiceError) {
         console.error("Error generating PDF invoice:", invoiceError);
-        
-        try {
-          // Fallback to HTML if PDF generation fails
-          const invoiceHTML = generateInvoiceHTML(orderData, orderData.shippingAddress);
-          
-          mailOptions.attachments = [
-            {
-              filename: `Invoice_${orderData.invoiceId || orderId}.html`,
-              content: invoiceHTML,
-              contentType: 'text/html'
-            }
-          ];
-          
-          console.log("Falling back to HTML invoice due to PDF generation error");
-        } catch (htmlError) {
-          console.error("Error generating HTML invoice:", htmlError);
-          // Continue sending email without invoice if there's an error
-        }
+        console.error("PDF generation failed. Email will be sent without invoice attachment.");
+        // Continue sending email without invoice if PDF generation fails
       }
     }
 
