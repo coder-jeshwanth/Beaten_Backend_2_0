@@ -25,17 +25,25 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const sgst = isInterState ? 0 : totalGST / 2;
       const igst = isInterState ? totalGST : 0;
 
-      // Create PDF document
-      const doc = new PDFDocument({ size: 'A4', margin: 30 });
+      // Create PDF document with auto-page-break enabled
+      const doc = new PDFDocument({ 
+        size: 'A4', 
+        margin: 30,
+        autoFirstPage: true,
+        bufferPages: true
+      });
       const chunks = [];
 
       doc.on('data', chunk => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      // Page dimensions
+      // Page dimensions with proper margins
       const pageWidth = 535; // A4 width minus margins
       const margin = 30;
+      
+      // Enable automatic font size adjustment
+      doc.fontSize(8); // Set base font size
 
       // Draw thin border around entire page
       doc.lineWidth(0.5);
@@ -127,13 +135,31 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         colPositions.push(xPos);
       }
 
-      // Draw table header
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
+      // Draw table header with automatic font sizing
+      doc.font('Helvetica-Bold').fillColor('#000000');
+      const maxHeaderFontSize = 8;
+      const minHeaderFontSize = 6;
+
+      // Calculate optimal font size for headers
+      let headerFontSize = maxHeaderFontSize;
+      headers.forEach((header, i) => {
+        const width = colWidths[i];
+        while (headerFontSize > minHeaderFontSize && 
+               doc.widthOfString(header) > width - 4) {
+          headerFontSize--;
+        }
+      });
+
+      doc.fontSize(headerFontSize);
 
       // Draw header cells
       for (let i = 0; i < headers.length; i++) {
         const align = i < 3 ? 'left' : 'center';
-        doc.text(headers[i], colPositions[i], tableY, { width: colWidths[i], align });
+        doc.text(headers[i], colPositions[i], tableY, { 
+          width: colWidths[i], 
+          align,
+          ellipsis: true
+        });
 
         // Draw vertical lines
         if (i > 0) {
@@ -146,7 +172,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
 
       // Table rows
       let rowY = tableY + 20;
-      doc.fontSize(8).font('Helvetica').fillColor('#000000');
+      doc.fontSize(7).font('Helvetica').fillColor('#000000'); // Slightly smaller font for content
 
       order.orderItems.forEach((item) => {
         const itemAmount = item.gst * item.quantity;
@@ -163,13 +189,38 @@ const generateInvoicePDF = async (order, shippingAddress) => {
           `₹${itemTotal}`
         ];
 
-        // Draw row cells
+        // Auto-calculate font size for product name (first column)
+        const maxRowFontSize = 7;
+        const minRowFontSize = 6;
+        let rowFontSize = maxRowFontSize;
+        
+        while (rowFontSize > minRowFontSize && 
+               doc.widthOfString(rowData[0]) > colWidths[0] - 4) {
+          rowFontSize--;
+        }
+        
+        doc.fontSize(rowFontSize);
+
+        // Draw row cells with wrapping for product name
         for (let i = 0; i < rowData.length; i++) {
           const align = i < 3 ? 'left' : 'center';
-          doc.text(rowData[i], colPositions[i], rowY, { width: colWidths[i], align });
+          const options = { 
+            width: colWidths[i], 
+            align,
+            ellipsis: true
+          };
+          
+          // Add height calculation for product name
+          if (i === 0) {
+            const textHeight = doc.heightOfString(rowData[i], options);
+            doc.text(rowData[i], colPositions[i], rowY, options);
+            rowY = Math.max(rowY, rowY + textHeight - 12); // Adjust row height if text wraps
+          } else {
+            doc.text(rowData[i], colPositions[i], rowY, options);
+          }
         }
 
-        // Horizontal line below row
+        // Horizontal line below row with dynamic spacing
         doc.moveTo(margin + 15, rowY + 15).lineTo(margin + pageWidth - 15, rowY + 15).stroke();
         rowY += 20;
       });
