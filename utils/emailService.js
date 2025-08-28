@@ -260,6 +260,9 @@ const generateInvoiceHTML = (order, shippingAddress) => {
   const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
   const totalDiscount = discountAmount + subscriptionDiscount;
   
+  // Calculate if inter-state transaction for tax calculation
+  const isInterState = shippingAddress.state !== 'Karnataka';
+  
   return `
     <!DOCTYPE html>
     <html>
@@ -267,104 +270,159 @@ const generateInvoiceHTML = (order, shippingAddress) => {
       <meta charset="utf-8">
       <title>Invoice #${order.invoiceId}</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
-        .invoice-header { text-align: center; border-bottom: 2px solid #ff9900; padding-bottom: 20px; margin-bottom: 30px; }
-        .company-name { font-size: 28px; font-weight: bold; color: #ff9900; margin-bottom: 5px; }
-        .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .invoice-info div { flex: 1; }
-        .section-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .order-table th, .order-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        .order-table th { background-color: #f8f9fa; font-weight: bold; }
-        .totals-section { float: right; width: 300px; margin-top: 20px; }
-        .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
-        .total-row.final { font-weight: bold; font-size: 18px; border-top: 2px solid #ff9900; padding-top: 10px; }
-        .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica', Arial, sans-serif; background: #ffffff; color: #333; line-height: 1.4; }
+        .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        
+        /* Header Section */
+        .header-section { background: #FF6B35; color: white; padding: 30px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .company-brand { font-size: 36px; font-weight: bold; }
+        .company-subtitle { font-size: 14px; font-weight: bold; margin-top: 5px; }
+        .invoice-title { font-size: 28px; font-weight: bold; text-align: right; }
+        
+        /* Company Details */
+        .company-details { background: #f8f9fa; padding: 20px; border: 1px solid #e5e5e5; display: flex; justify-content: space-between; }
+        .company-info h3 { color: #333; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        .company-info p { font-size: 10px; margin: 3px 0; }
+        .invoice-info h3 { color: #333; font-size: 11px; font-weight: bold; margin-bottom: 10px; }
+        .invoice-info p { font-size: 10px; margin: 3px 0; }
+        
+        /* Billing Section */
+        .billing-section { display: flex; gap: 20px; margin: 20px 0; }
+        .billing-box { flex: 1; background: #f8f9fa; padding: 20px; border: 1px solid #e5e5e5; border-radius: 4px; }
+        .billing-box h3 { color: #333; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+        .billing-box p { font-size: 10px; margin: 3px 0; }
+        
+        /* Table Styles */
+        .invoice-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .invoice-table th { background: #f8f9fa; color: #333; font-weight: bold; font-size: 11px; padding: 12px 8px; border: 1px solid #e5e5e5; text-align: center; }
+        .invoice-table td { font-size: 10px; padding: 12px 8px; border: 1px solid #e5e5e5; text-align: center; }
+        .invoice-table tr:nth-child(even) { background: #f9f9f9; }
+        .invoice-table tr:nth-child(odd) { background: #ffffff; }
+        .invoice-table .description { text-align: left; }
+        
+        /* Totals Section */
+        .totals-section { float: right; width: 300px; margin-top: 20px; background: #f8f9fa; border: 1px solid #e5e5e5; border-radius: 4px; }
+        .totals-header { background: #FF6B35; color: white; padding: 15px; font-size: 14px; font-weight: bold; text-align: center; }
+        .totals-content { padding: 20px; }
+        .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 11px; }
+        .total-row.final { font-weight: bold; font-size: 13px; background: #FF6B35; color: white; margin: 10px -20px -20px -20px; padding: 15px 20px; }
+        
+        /* Footer */
+        .footer-section { clear: both; background: #f8f9fa; padding: 25px; margin-top: 40px; border: 1px solid #e5e5e5; border-radius: 4px; text-align: center; }
+        .thank-you { color: #FF6B35; font-size: 16px; font-weight: bold; margin-bottom: 15px; }
+        .disclaimer { font-size: 10px; color: #666; margin: 10px 0; }
+        .company-footer { font-size: 8px; color: #999; margin-top: 15px; }
       </style>
     </head>
     <body>
-      <div class="invoice-header">
-        <div class="company-name">BEATEN</div>
-        <div class="invoice-title">TAX INVOICE</div>
-        <div>Invoice #${order.invoiceId}</div>
-      </div>
-      
-      <div class="invoice-info">
-        <div>
-          <div class="section-title">Bill To:</div>
-          <div>${shippingAddress.fullName}</div>
-          <div>${shippingAddress.addressLine1}</div>
-          ${shippingAddress.addressLine2 ? `<div>${shippingAddress.addressLine2}</div>` : ''}
-          <div>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}</div>
-          <div>${shippingAddress.country}</div>
-          <div>Phone: ${shippingAddress.phoneNumber}</div>
-        </div>
-        <div>
-          <div class="section-title">Invoice Details:</div>
-          <div><strong>Order ID:</strong> ${order.orderId}</div>
-          <div><strong>Order Date:</strong> ${orderDate}</div>
-          <div><strong>Invoice Date:</strong> ${currentDate}</div>
-          <div><strong>Payment Method:</strong> ${order.paymentInfo?.method || 'ONLINE'}</div>
-          <div><strong>AWB Number:</strong> ${order.awbNumber}</div>
-        </div>
-      </div>
-
-      <table class="order-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>HSN/SAC</th>
-            <th>Size</th>
-            <th>Color</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>GST</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${order.orderItems.map(item => `
-            <tr>
-              <td>${item.name}</td>
-              <td>6109</td>
-              <td>${item.size || '-'}</td>
-              <td>${item.color || '-'}</td>
-              <td>${item.quantity}</td>
-              <td>₹${item.price}</td>
-              <td>₹${(item.gst * item.quantity).toFixed(2)}</td>
-              <td>₹${(item.price * item.quantity).toFixed(2)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div class="totals-section">
-        <div class="total-row">
-          <span>Subtotal:</span>
-          <span>₹${subtotal.toFixed(2)}</span>
-        </div>
-        <div class="total-row">
-          <span>Total GST:</span>
-          <span>₹${totalGST.toFixed(2)}</span>
-        </div>
-        ${totalDiscount > 0 ? `
-          <div class="total-row">
-            <span>Discount:</span>
-            <span>-₹${totalDiscount.toFixed(2)}</span>
+      <div class="invoice-container">
+        <!-- Header Section -->
+        <div class="header-section">
+          <div>
+            <div class="company-brand">BEATEN</div>
+            <div class="company-subtitle">PRIVATE LIMITED</div>
           </div>
-        ` : ''}
-        <div class="total-row final">
-          <span>Total Amount:</span>
-          <span>₹${order.totalPrice.toFixed(2)}</span>
+          <div class="invoice-title">TAX INVOICE</div>
         </div>
-      </div>
+        
+        <!-- Company Details -->
+        <div class="company-details">
+          <div class="company-info">
+            <h3>SELLER / CONSIGNOR DETAILS:</h3>
+            <p>Address: 123 Fashion Street, Bangalore, Karnataka 560001</p>
+            <p>GSTIN: 29AABCB1234C1Z5 | Email: support@beaten.in | Phone: +91-9876543210</p>
+          </div>
+          <div class="invoice-info">
+            <h3>INVOICE DETAILS:</h3>
+            <p><strong>Invoice No:</strong> ${order.invoiceId || order.orderId}</p>
+            <p><strong>Invoice Date:</strong> ${currentDate}</p>
+            <p><strong>Order Date:</strong> ${orderDate}</p>
+          </div>
+        </div>
+        
+        <!-- Billing Section -->
+        <div class="billing-section">
+          <div class="billing-box">
+            <h3>BILL TO / CONSIGNEE DETAILS:</h3>
+            <p><strong>${shippingAddress.fullName}</strong></p>
+            <p>${shippingAddress.addressLine1}</p>
+            ${shippingAddress.addressLine2 ? `<p>${shippingAddress.addressLine2}</p>` : ''}
+            <p>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}</p>
+          </div>
+          <div class="billing-box">
+            <h3>ORDER & PAYMENT DETAILS:</h3>
+            <p><strong>Phone:</strong> ${shippingAddress.phoneNumber}</p>
+            <p><strong>Payment Mode:</strong> ${order.paymentInfo?.method || 'PREPAID'}</p>
+            <p><strong>AWB/Tracking:</strong> ${order.awbNumber || 'N/A'}</p>
+            <p><strong>Order ID:</strong> ${order.orderId}</p>
+          </div>
+        </div>
 
-      <div style="clear: both;"></div>
+        <!-- Product Table -->
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th class="description">DESCRIPTION</th>
+              <th>SKU</th>
+              <th>HSN</th>
+              <th>QTY</th>
+              <th>RATE (₹)</th>
+              <th>AMOUNT (₹)</th>
+              <th>TOTAL (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.orderItems.map(item => {
+              const itemAmount = item.price * item.quantity;
+              const itemTotal = itemAmount + (item.gst * item.quantity);
+              return `
+                <tr>
+                  <td class="description">${item.name}</td>
+                  <td>${item.sku || 'BT-001'}</td>
+                  <td>6109</td>
+                  <td>${item.quantity}</td>
+                  <td>${item.price.toFixed(2)}</td>
+                  <td>${itemAmount.toFixed(2)}</td>
+                  <td>${itemTotal.toFixed(2)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
 
-      <div class="footer">
-        <div>Thank you for shopping with BEATEN!</div>
-        <div>For any queries, contact us at support@beaten.in</div>
+        <!-- Totals Section -->
+        <div class="totals-section">
+          <div class="totals-header">AMOUNT SUMMARY</div>
+          <div class="totals-content">
+            <div class="total-row">
+              <span>Subtotal:</span>
+              <span>₹${subtotal.toFixed(2)}</span>
+            </div>
+            ${isInterState ? 
+              `<div class="total-row"><span>IGST (18%):</span><span>₹${totalGST.toFixed(2)}</span></div>` :
+              `<div class="total-row"><span>CGST (9%):</span><span>₹${(totalGST/2).toFixed(2)}</span></div>
+               <div class="total-row"><span>SGST (9%):</span><span>₹${(totalGST/2).toFixed(2)}</span></div>`
+            }
+            ${totalDiscount > 0 ? 
+              `<div class="total-row"><span>Discount:</span><span>-₹${totalDiscount.toFixed(2)}</span></div>` : ''
+            }
+            <div class="total-row final">
+              <span>TOTAL AMOUNT:</span>
+              <span>₹${order.totalPrice.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-section">
+          <div class="thank-you">Thank You for choosing BEATEN!</div>
+          <div class="disclaimer">Products are for personal consumption only and not for resale.</div>
+          <div class="disclaimer">For returns & exchanges, visit beaten.in/policy</div>
+          <div class="company-footer">
+            Registered Office: BEATEN Private Limited, 123 Fashion Street, Bangalore, Karnataka 560001
+          </div>
+        </div>
       </div>
     </body>
     </html>
