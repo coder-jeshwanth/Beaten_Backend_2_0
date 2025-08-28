@@ -25,217 +25,252 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const sgst = isInterState ? 0 : totalGST / 2;
       const igst = isInterState ? totalGST : 0;
       
-      // Create PDF document
-      const doc = new PDFDocument({margin: 30, size: 'A4'});
+      // Create PDF document with proper margins
+      const doc = new PDFDocument({margin: 40, size: 'A4'});
       const chunks = [];
       
       doc.on('data', chunk => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
       
-      // Helper function to draw a box
-      const drawBox = (x, y, width, height) => {
-        doc.rect(x, y, width, height).stroke('#E0E0E0');
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+      const margin = 40;
+      const contentWidth = pageWidth - (2 * margin);
+      
+      // Helper function to draw a styled box
+      const drawStyledBox = (x, y, width, height, fillColor = null, strokeColor = '#E5E5E5', strokeWidth = 1) => {
+        if (fillColor) {
+          doc.rect(x, y, width, height).fillAndStroke(fillColor, strokeColor);
+        } else {
+          doc.rect(x, y, width, height).stroke(strokeColor);
+        }
       };
       
-      // HEADER SECTION
-      drawBox(30, 30, 535, 120);
+      // MAIN HEADER - Brand Section
+      drawStyledBox(margin, margin, contentWidth, 100, '#FF6B35');
       
-      // Left side - Company details
-      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('BEATEN PRIVATE LIMITED', 40, 45);
-      doc.fontSize(10).font('Helvetica').fillColor('#333333');
-      doc.text('Seller/Consignor Details:', 40, 65);
-      doc.text('Address: 123 Fashion Street, Bangalore, Karnataka 560001', 40, 80);
-      doc.text('GSTIN: 29AABCB1234C1Z5', 40, 95);
-      doc.text('Email: support@beaten.in', 40, 110);
-      doc.text('Support: +91-9876543210', 40, 125);
+      // BEATEN Logo and Company Name
+      doc.fontSize(36).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text('BEATEN', margin + 30, margin + 25);
       
-      // Right side - Logo and Invoice details
-      doc.fontSize(24).font('Helvetica-Bold').fillColor('#FF6B35');
-      doc.text('BEATEN', 450, 45);
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
-      doc.text(`Invoice #${order.invoiceId || order.orderId}`, 400, 80);
-      doc.fontSize(10).font('Helvetica').fillColor('#333333');
-      doc.text(`Date: ${currentDate}`, 400, 95);
-      doc.text(`Order Date: ${orderDate}`, 400, 110);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text('PRIVATE LIMITED', margin + 30, margin + 65);
       
-      // RECIPIENT SECTION
-      drawBox(30, 165, 535, 100);
+      // Invoice Title on the right
+      doc.fontSize(28).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text('TAX INVOICE', margin + 320, margin + 35, {width: 200, align: 'right'});
       
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('Recipient Details:', 40, 180);
-      doc.fontSize(10).font('Helvetica').fillColor('#333333');
-      doc.text(`Name: ${shippingAddress.fullName}`, 40, 200);
-      doc.text(`Address: ${shippingAddress.addressLine1}`, 40, 215);
+      // COMPANY DETAILS SECTION
+      const companyY = margin + 120;
+      drawStyledBox(margin, companyY, contentWidth, 80);
+      
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#333333');
+      doc.text('SELLER / CONSIGNOR DETAILS:', margin + 20, companyY + 15);
+      
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text('Address: 123 Fashion Street, Bangalore, Karnataka 560001', margin + 20, companyY + 35);
+      doc.text('GSTIN: 29AABCB1234C1Z5  |  Email: support@beaten.in  |  Phone: +91-9876543210', margin + 20, companyY + 50);
+      
+      // Invoice details on the right
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text(`Invoice No: ${order.invoiceId || order.orderId}`, margin + 350, companyY + 20);
+      doc.text(`Invoice Date: ${currentDate}`, margin + 350, companyY + 35);
+      doc.text(`Order Date: ${orderDate}`, margin + 350, companyY + 50);
+      
+      // BILLING DETAILS SECTION
+      const billingY = companyY + 100;
+      
+      // Billing Address Box (Left)
+      drawStyledBox(margin, billingY, (contentWidth / 2) - 10, 100);
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#333333');
+      doc.text('BILL TO / CONSIGNEE DETAILS:', margin + 20, billingY + 15);
+      
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(`${shippingAddress.fullName}`, margin + 20, billingY + 35);
+      doc.text(`${shippingAddress.addressLine1}`, margin + 20, billingY + 50);
       if (shippingAddress.addressLine2) {
-        doc.text(`         ${shippingAddress.addressLine2}`, 40, 230);
-        doc.text(`         ${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}`, 40, 245);
+        doc.text(`${shippingAddress.addressLine2}`, margin + 20, billingY + 65);
+        doc.text(`${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}`, margin + 20, billingY + 80);
       } else {
-        doc.text(`         ${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}`, 40, 230);
+        doc.text(`${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}`, margin + 20, billingY + 65);
       }
       
-      // Right side - Payment and tracking info
-      doc.text(`Phone: ${shippingAddress.phoneNumber}`, 350, 200);
-      doc.text(`Mode of Payment: ${order.paymentInfo?.method || 'PREPAID'}`, 350, 215);
-      doc.text(`AWB/Tracking: ${order.awbNumber || 'N/A'}`, 350, 230);
+      // Order & Payment Details Box (Right)
+      drawStyledBox(margin + (contentWidth / 2) + 10, billingY, (contentWidth / 2) - 10, 100);
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#333333');
+      doc.text('ORDER & PAYMENT DETAILS:', margin + (contentWidth / 2) + 30, billingY + 15);
       
-      // INVOICE TABLE
-      const tableTop = 285;
-      drawBox(30, tableTop, 535, 25); // Header box
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      doc.text(`Phone: ${shippingAddress.phoneNumber}`, margin + (contentWidth / 2) + 30, billingY + 35);
+      doc.text(`Payment Mode: ${order.paymentInfo?.method || 'PREPAID'}`, margin + (contentWidth / 2) + 30, billingY + 50);
+      doc.text(`AWB/Tracking: ${order.awbNumber || 'N/A'}`, margin + (contentWidth / 2) + 30, billingY + 65);
+      doc.text(`Order ID: ${order.orderId}`, margin + (contentWidth / 2) + 30, billingY + 80);
       
-      // Table headers
-      doc.fontSize(10).font('Helvetica-Bold').fillColor('#FFFFFF');
-      doc.rect(30, tableTop, 535, 25).fill('#333333').stroke();
+      // PRODUCT TABLE SECTION
+      const tableY = billingY + 120;
       
-      const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
-      const colWidths = [150, 80, 60, 40, 70, 70, 65];
-      let colX = 35;
+      // Table Header
+      drawStyledBox(margin, tableY, contentWidth, 30, '#F8F9FA');
+      
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#333333');
+      const headers = ['DESCRIPTION', 'SKU', 'HSN', 'QTY', 'RATE (₹)', 'AMOUNT (₹)', 'TOTAL (₹)'];
+      const colWidths = [140, 70, 60, 40, 80, 80, 80];
+      let colX = margin + 10;
       
       headers.forEach((header, i) => {
-        doc.text(header, colX, tableTop + 8, {width: colWidths[i], align: 'center'});
+        doc.text(header, colX, tableY + 10, {width: colWidths[i], align: i > 2 ? 'center' : 'left'});
         colX += colWidths[i];
       });
       
-      // Table rows
-      let rowY = tableTop + 25;
+      // Table Rows
+      let rowY = tableY + 30;
       doc.fillColor('#000000');
       
       order.orderItems.forEach((item, index) => {
-        const rowHeight = 25;
+        const rowHeight = 35;
         
-        // Alternate row colors
-        if (index % 2 === 0) {
-          doc.rect(30, rowY, 535, rowHeight).fill('#F9F9F9').stroke('#E0E0E0');
-        } else {
-          doc.rect(30, rowY, 535, rowHeight).fill('#FFFFFF').stroke('#E0E0E0');
-        }
+        // Alternate row colors for better readability
+        const fillColor = index % 2 === 0 ? '#FFFFFF' : '#F9F9F9';
+        drawStyledBox(margin, rowY, contentWidth, rowHeight, fillColor, '#E5E5E5');
         
-        doc.fontSize(9).font('Helvetica').fillColor('#000000');
-        colX = 35;
+        doc.fontSize(10).font('Helvetica').fillColor('#000000');
+        colX = margin + 10;
         
         // Description
-        doc.text(item.name, colX, rowY + 8, {width: colWidths[0], align: 'left'});
+        doc.text(item.name, colX, rowY + 12, {width: colWidths[0], align: 'left'});
         colX += colWidths[0];
         
         // SKU
-        doc.text(item.sku || 'BT-001', colX, rowY + 8, {width: colWidths[1], align: 'center'});
+        doc.text(item.sku || 'BT-001', colX, rowY + 12, {width: colWidths[1], align: 'center'});
         colX += colWidths[1];
         
         // HSN
-        doc.text('6109', colX, rowY + 8, {width: colWidths[2], align: 'center'});
+        doc.text('6109', colX, rowY + 12, {width: colWidths[2], align: 'center'});
         colX += colWidths[2];
         
         // Qty
-        doc.text(item.quantity.toString(), colX, rowY + 8, {width: colWidths[3], align: 'center'});
+        doc.text(item.quantity.toString(), colX, rowY + 12, {width: colWidths[3], align: 'center'});
         colX += colWidths[3];
         
         // Rate
-        doc.text(`₹${item.price.toFixed(2)}`, colX, rowY + 8, {width: colWidths[4], align: 'right'});
+        doc.text(`${item.price.toFixed(2)}`, colX, rowY + 12, {width: colWidths[4], align: 'center'});
         colX += colWidths[4];
         
         // Amount (before tax)
         const itemAmount = item.price * item.quantity;
-        doc.text(`₹${itemAmount.toFixed(2)}`, colX, rowY + 8, {width: colWidths[5], align: 'right'});
+        doc.text(`${itemAmount.toFixed(2)}`, colX, rowY + 12, {width: colWidths[5], align: 'center'});
         colX += colWidths[5];
         
         // Total (with tax)
         const itemTotal = itemAmount + (item.gst * item.quantity);
-        doc.text(`₹${itemTotal.toFixed(2)}`, colX, rowY + 8, {width: colWidths[6], align: 'right'});
+        doc.text(`${itemTotal.toFixed(2)}`, colX, rowY + 12, {width: colWidths[6], align: 'center'});
         
         rowY += rowHeight;
       });
       
-      // TAX BREAKDOWN SECTION
-      const taxSectionY = rowY + 20;
-      drawBox(350, taxSectionY, 215, 120);
+      // TAX CALCULATION & TOTALS SECTION
+      const totalsY = rowY + 20;
       
-      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('Tax Breakdown:', 360, taxSectionY + 10);
+      // Summary box positioned on the right side
+      const summaryBoxWidth = 280;
+      const summaryBoxX = margin + contentWidth - summaryBoxWidth;
+      drawStyledBox(summaryBoxX, totalsY, summaryBoxWidth, 140, '#F8F9FA');
       
-      doc.fontSize(10).font('Helvetica').fillColor('#333333');
-      let taxY = taxSectionY + 30;
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#333333');
+      doc.text('AMOUNT SUMMARY', summaryBoxX + 20, totalsY + 15);
       
-      doc.text(`Subtotal:`, 360, taxY);
-      doc.text(`₹${subtotal.toFixed(2)}`, 520, taxY, {align: 'right'});
-      taxY += 15;
+      // Draw separator line
+      doc.moveTo(summaryBoxX + 20, totalsY + 35).lineTo(summaryBoxX + summaryBoxWidth - 20, totalsY + 35).stroke('#E5E5E5');
       
+      doc.fontSize(11).font('Helvetica').fillColor('#000000');
+      let summaryY = totalsY + 50;
+      const lineHeight = 18;
+      
+      // Subtotal
+      doc.text('Subtotal:', summaryBoxX + 20, summaryY);
+      doc.text(`₹${subtotal.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY, {align: 'right'});
+      summaryY += lineHeight;
+      
+      // Tax breakdown
       if (cgst > 0) {
-        doc.text(`CGST (9%):`, 360, taxY);
-        doc.text(`₹${cgst.toFixed(2)}`, 520, taxY, {align: 'right'});
-        taxY += 15;
+        doc.text('CGST (9%):', summaryBoxX + 20, summaryY);
+        doc.text(`₹${cgst.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY, {align: 'right'});
+        summaryY += lineHeight;
         
-        doc.text(`SGST (9%):`, 360, taxY);
-        doc.text(`₹${sgst.toFixed(2)}`, 520, taxY, {align: 'right'});
-        taxY += 15;
+        doc.text('SGST (9%):', summaryBoxX + 20, summaryY);
+        doc.text(`₹${sgst.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY, {align: 'right'});
+        summaryY += lineHeight;
       }
       
       if (igst > 0) {
-        doc.text(`IGST (18%):`, 360, taxY);
-        doc.text(`₹${igst.toFixed(2)}`, 520, taxY, {align: 'right'});
-        taxY += 15;
+        doc.text('IGST (18%):', summaryBoxX + 20, summaryY);
+        doc.text(`₹${igst.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY, {align: 'right'});
+        summaryY += lineHeight;
       }
       
+      // Discounts
       if (totalDiscount > 0) {
-        doc.text(`Discount:`, 360, taxY);
-        doc.text(`-₹${totalDiscount.toFixed(2)}`, 520, taxY, {align: 'right'});
-        taxY += 15;
+        doc.text('Discount:', summaryBoxX + 20, summaryY);
+        doc.text(`-₹${totalDiscount.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY, {align: 'right'});
+        summaryY += lineHeight;
       }
       
       // Draw line above total
-      doc.moveTo(360, taxY + 5).lineTo(555, taxY + 5).stroke('#333333');
-      taxY += 15;
+      doc.moveTo(summaryBoxX + 20, summaryY + 5).lineTo(summaryBoxX + summaryBoxWidth - 20, summaryY + 5).stroke('#FF6B35');
+      summaryY += 15;
       
-      // Total amount
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
-      doc.text(`TOTAL AMOUNT:`, 360, taxY);
-      doc.text(`₹${order.totalPrice.toFixed(2)}`, 520, taxY, {align: 'right'});
+      // Total amount with branded styling
+      drawStyledBox(summaryBoxX + 10, summaryY - 5, summaryBoxWidth - 20, 25, '#FF6B35');
+      doc.fontSize(13).font('Helvetica-Bold').fillColor('#FFFFFF');
+      doc.text('TOTAL AMOUNT:', summaryBoxX + 20, summaryY + 3);
+      doc.text(`₹${order.totalPrice.toFixed(2)}`, summaryBoxX + summaryBoxWidth - 80, summaryY + 3, {align: 'right'});
       
       // FOOTER SECTION
-      const footerY = 650;
-      drawBox(30, footerY, 535, 120);
+      const footerY = 700;
+      drawStyledBox(margin, footerY, contentWidth, 100, '#F8F9FA');
       
       // Generate QR codes
       try {
         // Website QR Code
         const websiteQR = await QRCode.toBuffer('https://beaten.in', { 
-          width: 40, 
+          width: 50, 
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(websiteQR, 40, footerY + 35, { width: 40, height: 40 });
+        doc.image(websiteQR, margin + 30, footerY + 25, { width: 50, height: 50 });
         
-        // Social Media QR Code (Instagram or general social)
+        // Social Media QR Code
         const socialQR = await QRCode.toBuffer('https://instagram.com/beaten.official', { 
-          width: 40, 
+          width: 50, 
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(socialQR, 100, footerY + 35, { width: 40, height: 40 });
+        doc.image(socialQR, margin + 100, footerY + 25, { width: 50, height: 50 });
       } catch (qrError) {
         console.error('QR Code generation error:', qrError);
-        // Fallback to placeholder boxes if QR generation fails
-        doc.rect(40, footerY + 35, 40, 40).stroke('#CCCCCC');
-        doc.rect(100, footerY + 35, 40, 40).stroke('#CCCCCC');
+        // Fallback to placeholder boxes
+        drawStyledBox(margin + 30, footerY + 25, 50, 50, '#FFFFFF', '#CCCCCC');
+        drawStyledBox(margin + 100, footerY + 25, 50, 50, '#FFFFFF', '#CCCCCC');
       }
       
       // QR Code labels
-      doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('Visit Website', 40, footerY + 20);
-      doc.text('Follow Us', 100, footerY + 20);
-      
-      // Thank you message
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#FF6B35');
-      doc.text('Thank You for shopping with BEATEN!', 200, footerY + 25, {align: 'center'});
-      
-      // Disclaimer
       doc.fontSize(9).font('Helvetica').fillColor('#666666');
-      doc.text('Products being sent are for personal consumption only and not for resale.', 200, footerY + 45, {align: 'center'});
+      doc.text('Visit Website', margin + 30, footerY + 80);
+      doc.text('Follow Us', margin + 100, footerY + 80);
       
-      // Registered office
+      // Thank you message with brand styling
+      doc.fontSize(16).font('Helvetica-Bold').fillColor('#FF6B35');
+      doc.text('Thank You for choosing BEATEN!', margin + 200, footerY + 30, {align: 'center'});
+      
+      // Disclaimer and policies
+      doc.fontSize(10).font('Helvetica').fillColor('#666666');
+      doc.text('Products are for personal consumption only and not for resale.', margin + 200, footerY + 50, {align: 'center'});
+      doc.text('For returns & exchanges, visit beaten.in/policy', margin + 200, footerY + 65, {align: 'center'});
+      
+      // Registered office - positioned at the very bottom
       doc.fontSize(8).font('Helvetica').fillColor('#999999');
-      doc.text('Registered Office: BEATEN Private Limited, 123 Fashion Street, Bangalore, Karnataka 560001', 40, footerY + 85, {align: 'center'});
-      doc.text('CIN: U74999KA2023PTC000000 | Email: legal@beaten.in | Phone: +91-9876543210', 40, footerY + 98, {align: 'center'});
+      doc.text('Registered Office: BEATEN Private Limited, 123 Fashion Street, Bangalore, Karnataka 560001', margin, footerY + 85, {align: 'center', width: contentWidth});
       
       doc.end();
     } catch (error) {
@@ -256,6 +291,9 @@ const generateInvoiceHTML = (order, shippingAddress) => {
   const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
   const totalDiscount = discountAmount + subscriptionDiscount;
   
+  // Calculate if inter-state transaction for tax calculation
+  const isInterState = shippingAddress.state !== 'Karnataka';
+  
   return `
     <!DOCTYPE html>
     <html>
@@ -263,104 +301,159 @@ const generateInvoiceHTML = (order, shippingAddress) => {
       <meta charset="utf-8">
       <title>Invoice #${order.invoiceId}</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
-        .invoice-header { text-align: center; border-bottom: 2px solid #ff9900; padding-bottom: 20px; margin-bottom: 30px; }
-        .company-name { font-size: 28px; font-weight: bold; color: #ff9900; margin-bottom: 5px; }
-        .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-        .invoice-info div { flex: 1; }
-        .section-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-        .order-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .order-table th, .order-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        .order-table th { background-color: #f8f9fa; font-weight: bold; }
-        .totals-section { float: right; width: 300px; margin-top: 20px; }
-        .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
-        .total-row.final { font-weight: bold; font-size: 18px; border-top: 2px solid #ff9900; padding-top: 10px; }
-        .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica', Arial, sans-serif; background: #ffffff; color: #333; line-height: 1.4; }
+        .invoice-container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        
+        /* Header Section */
+        .header-section { background: #FF6B35; color: white; padding: 30px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; }
+        .company-brand { font-size: 36px; font-weight: bold; }
+        .company-subtitle { font-size: 14px; font-weight: bold; margin-top: 5px; }
+        .invoice-title { font-size: 28px; font-weight: bold; text-align: right; }
+        
+        /* Company Details */
+        .company-details { background: #f8f9fa; padding: 20px; border: 1px solid #e5e5e5; display: flex; justify-content: space-between; }
+        .company-info h3 { color: #333; font-size: 12px; font-weight: bold; margin-bottom: 10px; }
+        .company-info p { font-size: 10px; margin: 3px 0; }
+        .invoice-info h3 { color: #333; font-size: 11px; font-weight: bold; margin-bottom: 10px; }
+        .invoice-info p { font-size: 10px; margin: 3px 0; }
+        
+        /* Billing Section */
+        .billing-section { display: flex; gap: 20px; margin: 20px 0; }
+        .billing-box { flex: 1; background: #f8f9fa; padding: 20px; border: 1px solid #e5e5e5; border-radius: 4px; }
+        .billing-box h3 { color: #333; font-size: 12px; font-weight: bold; margin-bottom: 15px; }
+        .billing-box p { font-size: 10px; margin: 3px 0; }
+        
+        /* Table Styles */
+        .invoice-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .invoice-table th { background: #f8f9fa; color: #333; font-weight: bold; font-size: 11px; padding: 12px 8px; border: 1px solid #e5e5e5; text-align: center; }
+        .invoice-table td { font-size: 10px; padding: 12px 8px; border: 1px solid #e5e5e5; text-align: center; }
+        .invoice-table tr:nth-child(even) { background: #f9f9f9; }
+        .invoice-table tr:nth-child(odd) { background: #ffffff; }
+        .invoice-table .description { text-align: left; }
+        
+        /* Totals Section */
+        .totals-section { float: right; width: 300px; margin-top: 20px; background: #f8f9fa; border: 1px solid #e5e5e5; border-radius: 4px; }
+        .totals-header { background: #FF6B35; color: white; padding: 15px; font-size: 14px; font-weight: bold; text-align: center; }
+        .totals-content { padding: 20px; }
+        .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 11px; }
+        .total-row.final { font-weight: bold; font-size: 13px; background: #FF6B35; color: white; margin: 10px -20px -20px -20px; padding: 15px 20px; }
+        
+        /* Footer */
+        .footer-section { clear: both; background: #f8f9fa; padding: 25px; margin-top: 40px; border: 1px solid #e5e5e5; border-radius: 4px; text-align: center; }
+        .thank-you { color: #FF6B35; font-size: 16px; font-weight: bold; margin-bottom: 15px; }
+        .disclaimer { font-size: 10px; color: #666; margin: 10px 0; }
+        .company-footer { font-size: 8px; color: #999; margin-top: 15px; }
       </style>
     </head>
     <body>
-      <div class="invoice-header">
-        <div class="company-name">BEATEN</div>
-        <div class="invoice-title">TAX INVOICE</div>
-        <div>Invoice #${order.invoiceId}</div>
-      </div>
-      
-      <div class="invoice-info">
-        <div>
-          <div class="section-title">Bill To:</div>
-          <div>${shippingAddress.fullName}</div>
-          <div>${shippingAddress.addressLine1}</div>
-          ${shippingAddress.addressLine2 ? `<div>${shippingAddress.addressLine2}</div>` : ''}
-          <div>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}</div>
-          <div>${shippingAddress.country}</div>
-          <div>Phone: ${shippingAddress.phoneNumber}</div>
-        </div>
-        <div>
-          <div class="section-title">Invoice Details:</div>
-          <div><strong>Order ID:</strong> ${order.orderId}</div>
-          <div><strong>Order Date:</strong> ${orderDate}</div>
-          <div><strong>Invoice Date:</strong> ${currentDate}</div>
-          <div><strong>Payment Method:</strong> ${order.paymentInfo?.method || 'ONLINE'}</div>
-          <div><strong>AWB Number:</strong> ${order.awbNumber}</div>
-        </div>
-      </div>
-
-      <table class="order-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>HSN/SAC</th>
-            <th>Size</th>
-            <th>Color</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>GST</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${order.orderItems.map(item => `
-            <tr>
-              <td>${item.name}</td>
-              <td>6109</td>
-              <td>${item.size || '-'}</td>
-              <td>${item.color || '-'}</td>
-              <td>${item.quantity}</td>
-              <td>₹${item.price}</td>
-              <td>₹${(item.gst * item.quantity).toFixed(2)}</td>
-              <td>₹${(item.price * item.quantity).toFixed(2)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div class="totals-section">
-        <div class="total-row">
-          <span>Subtotal:</span>
-          <span>₹${subtotal.toFixed(2)}</span>
-        </div>
-        <div class="total-row">
-          <span>Total GST:</span>
-          <span>₹${totalGST.toFixed(2)}</span>
-        </div>
-        ${totalDiscount > 0 ? `
-          <div class="total-row">
-            <span>Discount:</span>
-            <span>-₹${totalDiscount.toFixed(2)}</span>
+      <div class="invoice-container">
+        <!-- Header Section -->
+        <div class="header-section">
+          <div>
+            <div class="company-brand">BEATEN</div>
+            <div class="company-subtitle">PRIVATE LIMITED</div>
           </div>
-        ` : ''}
-        <div class="total-row final">
-          <span>Total Amount:</span>
-          <span>₹${order.totalPrice.toFixed(2)}</span>
+          <div class="invoice-title">TAX INVOICE</div>
         </div>
-      </div>
+        
+        <!-- Company Details -->
+        <div class="company-details">
+          <div class="company-info">
+            <h3>SELLER / CONSIGNOR DETAILS:</h3>
+            <p>Address: 123 Fashion Street, Bangalore, Karnataka 560001</p>
+            <p>GSTIN: 29AABCB1234C1Z5 | Email: support@beaten.in | Phone: +91-9876543210</p>
+          </div>
+          <div class="invoice-info">
+            <h3>INVOICE DETAILS:</h3>
+            <p><strong>Invoice No:</strong> ${order.invoiceId || order.orderId}</p>
+            <p><strong>Invoice Date:</strong> ${currentDate}</p>
+            <p><strong>Order Date:</strong> ${orderDate}</p>
+          </div>
+        </div>
+        
+        <!-- Billing Section -->
+        <div class="billing-section">
+          <div class="billing-box">
+            <h3>BILL TO / CONSIGNEE DETAILS:</h3>
+            <p><strong>${shippingAddress.fullName}</strong></p>
+            <p>${shippingAddress.addressLine1}</p>
+            ${shippingAddress.addressLine2 ? `<p>${shippingAddress.addressLine2}</p>` : ''}
+            <p>${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.pincode}</p>
+          </div>
+          <div class="billing-box">
+            <h3>ORDER & PAYMENT DETAILS:</h3>
+            <p><strong>Phone:</strong> ${shippingAddress.phoneNumber}</p>
+            <p><strong>Payment Mode:</strong> ${order.paymentInfo?.method || 'PREPAID'}</p>
+            <p><strong>AWB/Tracking:</strong> ${order.awbNumber || 'N/A'}</p>
+            <p><strong>Order ID:</strong> ${order.orderId}</p>
+          </div>
+        </div>
 
-      <div style="clear: both;"></div>
+        <!-- Product Table -->
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th class="description">DESCRIPTION</th>
+              <th>SKU</th>
+              <th>HSN</th>
+              <th>QTY</th>
+              <th>RATE (₹)</th>
+              <th>AMOUNT (₹)</th>
+              <th>TOTAL (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.orderItems.map(item => {
+              const itemAmount = item.price * item.quantity;
+              const itemTotal = itemAmount + (item.gst * item.quantity);
+              return `
+                <tr>
+                  <td class="description">${item.name}</td>
+                  <td>${item.sku || 'BT-001'}</td>
+                  <td>6109</td>
+                  <td>${item.quantity}</td>
+                  <td>${item.price.toFixed(2)}</td>
+                  <td>${itemAmount.toFixed(2)}</td>
+                  <td>${itemTotal.toFixed(2)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
 
-      <div class="footer">
-        <div>Thank you for shopping with BEATEN!</div>
-        <div>For any queries, contact us at support@beaten.in</div>
+        <!-- Totals Section -->
+        <div class="totals-section">
+          <div class="totals-header">AMOUNT SUMMARY</div>
+          <div class="totals-content">
+            <div class="total-row">
+              <span>Subtotal:</span>
+              <span>₹${subtotal.toFixed(2)}</span>
+            </div>
+            ${isInterState ? 
+              `<div class="total-row"><span>IGST (18%):</span><span>₹${totalGST.toFixed(2)}</span></div>` :
+              `<div class="total-row"><span>CGST (9%):</span><span>₹${(totalGST/2).toFixed(2)}</span></div>
+               <div class="total-row"><span>SGST (9%):</span><span>₹${(totalGST/2).toFixed(2)}</span></div>`
+            }
+            ${totalDiscount > 0 ? 
+              `<div class="total-row"><span>Discount:</span><span>-₹${totalDiscount.toFixed(2)}</span></div>` : ''
+            }
+            <div class="total-row final">
+              <span>TOTAL AMOUNT:</span>
+              <span>₹${order.totalPrice.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer-section">
+          <div class="thank-you">Thank You for choosing BEATEN!</div>
+          <div class="disclaimer">Products are for personal consumption only and not for resale.</div>
+          <div class="disclaimer">For returns & exchanges, visit beaten.in/policy</div>
+          <div class="company-footer">
+            Registered Office: BEATEN Private Limited, 123 Fashion Street, Bangalore, Karnataka 560001
+          </div>
+        </div>
       </div>
     </body>
     </html>
