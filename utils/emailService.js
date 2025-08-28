@@ -50,40 +50,44 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.lineWidth(0.5);
       doc.rect(margin, margin, pageWidth, 780).stroke();
 
-      // Header Section with TAX INVOICE and BEATEN (matching reference)
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('TAX INVOICE', margin + 15, margin + 15);
-
-      doc.fontSize(28).font('Helvetica-Bold');
-      doc.text('BEATEN', margin + pageWidth - 150, margin + 15, { width: 150, align: 'right' });
-
-      // Contact info under BEATEN (matching reference positioning)
-      doc.fontSize(9).font('Helvetica').fillColor('#555555');
-      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 220, margin + 45, { width: 220, align: 'right' });
-      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 220, margin + 60, { width: 220, align: 'right' });
-
+      // Center TAX INVOICE
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
+      const textWidth = doc.widthOfString('TAX INVOICE');
+      doc.text('TAX INVOICE', margin + (pageWidth - textWidth) / 2, margin + 15);
+      
+      // Left side - Seller/Consignor details
+      doc.fontSize(9).font('Helvetica-Bold');
+      doc.text('Seller/Consignor: Beaten apparels', margin + 15, margin + 40);
+      
+      doc.fontSize(9).font('Helvetica');
+      doc.text('Plot NO 91, Block B, Road NO-4,', margin + 15, margin + 55);
+      doc.text('Siddhartha Enclave, Patelguda,', margin + 15, margin + 70);
+      doc.text('Beeramguda, Pincode : 502319', margin + 15, margin + 85);
+      
+      // Right side - BEATEN and contact info
+      doc.fontSize(32).font('Helvetica-Bold');
+      doc.text('BEATEN', margin + pageWidth - 170, margin + 15, { width: 150, align: 'right' });
+      
+      doc.fontSize(9).font('Helvetica');
+      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 220, margin + 55, { width: 220, align: 'right' });
+      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 220, margin + 70, { width: 220, align: 'right' });
+      
       // GSTIN and Date
       doc.fontSize(8).font('Helvetica').fillColor('#333333');
-      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 48);
-      doc.text(`Dated: ${currentDate}`, margin + pageWidth - 90, margin + 75, { width: 75, align: 'right' });
-
+      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 100);
+      doc.text(`Dated: ${currentDate}`, margin + pageWidth - 90, margin + 100, { width: 75, align: 'right' });
+      
       // Horizontal line
-      doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
-
-      // Seller/Consignor (exactly like reference image)
-      doc.fontSize(8).font('Helvetica').fillColor('#444444');
-      doc.text('Seller/Consignor: Beaten apparels', margin + 15, margin + 100);
-      doc.text('Plot NO 91, Block B, Road NO-4,', margin + 15, margin + 112);
-      doc.text('Siddhartha Enclave, Patelguda,', margin + 15, margin + 124);
-      doc.text('Beeramguda, Pincode : 502319', margin + 15, margin + 136);
-
-      // Horizontal line
-      doc.moveTo(margin, margin + 150).lineTo(margin + pageWidth, margin + 150).stroke();
-
-      // Recipient Address (matching reference image)
-      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 160);
-
-      let addressY = margin + 172;
+      doc.moveTo(margin, margin + 115).lineTo(margin + pageWidth, margin + 115).stroke();
+      
+      // Recipient Address
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#444444');
+      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 130);
+      
+      // Recipient details
+      doc.fontSize(9).font('Helvetica');
+      let addressY = margin + 145;
+      
       if (shippingAddress.addressLine1) {
         doc.text('Plot NO ' + shippingAddress.addressLine1, margin + 15, addressY);
         addressY += 12;
@@ -99,29 +103,29 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text(`Pin: ${shippingAddress.pincode || ''}`, margin + 15, addressY);
       addressY += 12;
       doc.text(`Mobile NO: ${shippingAddress.phoneNumber || ''}`, margin + 15, addressY);
-
-      // Horizontal line
-      doc.moveTo(margin, margin + 235).lineTo(margin + pageWidth, margin + 235).stroke();
-
-      // ORDER NUMBER & PAYMENT INFO (single line like reference)
+      
+      // Horizontal line after recipient address
+      doc.moveTo(margin, margin + 210).lineTo(margin + pageWidth, margin + 210).stroke();
+      
+      // ORDER NUMBER & PAYMENT INFO
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('ORDER NUMBER:', margin + 15, margin + 245);
-      doc.text(`${order.orderId || ''}`, margin + 90, margin + 245);
+      doc.text('ORDER NUMBER:', margin + 15, margin + 225);
+      doc.text(`${order.orderId || ''}`, margin + 90, margin + 225);
 
-      doc.text('Mode Of Payment:', margin + 180, margin + 245);
-      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 245);
+      doc.text('Mode Of Payment:', margin + 180, margin + 225);
+      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 225);
 
-      doc.text('AWB Number:', margin + 320, margin + 245);
-      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 245);
+      doc.text('AWB Number:', margin + 320, margin + 225);
+      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 225);
 
       doc.fontSize(8).font('Helvetica').fillColor('#555555');
-      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 257);
+      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 237);
 
       // Horizontal line
-      doc.moveTo(margin, margin + 270).lineTo(margin + pageWidth, margin + 270).stroke();
+      doc.moveTo(margin, margin + 250).lineTo(margin + pageWidth, margin + 250).stroke();
 
       // PRODUCT TABLE
-      const tableY = margin + 280;
+      const tableY = margin + 260;
 
       // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
