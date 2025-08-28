@@ -79,23 +79,19 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Horizontal line after header
       doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
       
-      // GSTIN and Date centered on the same line
+      // GSTIN on left and Date on right, vertically middle-aligned
       doc.fontSize(9).font('Helvetica').fillColor('#333333');
       
-      // Calculate the center position for GSTIN and Date
-      const gstinText = 'GSTIN: 36ABEFB6155C1ZQ';
+      // GSTIN on left
+      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 100);
       
       // Use order delivery date if available, otherwise current date
       const deliveryDate = order.deliveredAt ? 
         new Date(order.deliveredAt).toLocaleDateString("en-IN") : 
         currentDate;
       
-      const dateText = `Date: ${deliveryDate}`;
-      const combinedText = `${gstinText}                ${dateText}`;
-      const gstDateWidth = doc.widthOfString(combinedText);
-      
-      // Position the text centered on the page
-      doc.text(combinedText, margin + (pageWidth - gstDateWidth) / 2, margin + 100);
+      // Date on right
+      doc.text(`Date: ${deliveryDate}`, margin + pageWidth - 250, margin + 100, { width: 220, align: 'right' });
       
       // Horizontal line after GSTIN and Date
       doc.moveTo(margin, margin + 110).lineTo(margin + pageWidth, margin + 110).stroke();
@@ -104,9 +100,19 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#444444');
       doc.text('Recipient Address:', margin + 15, margin + 125);
       
+      // Get recipient name from shippingAddress or order information
+      let recipientName = '';
+      if (shippingAddress.fullName) {
+        recipientName = shippingAddress.fullName;
+      } else if (order.user && order.user.name) {
+        recipientName = order.user.name;
+      } else if (order.userName) {
+        recipientName = order.userName;
+      }
+      
       // Recipient Name on the same line
       doc.fontSize(9).font('Helvetica').fillColor('#444444');
-      doc.text(shippingAddress.fullName || '', margin + 105, margin + 125);
+      doc.text(recipientName, margin + 105, margin + 125);
       
       // Start address details on the next line
       let addressY = margin + 140;
