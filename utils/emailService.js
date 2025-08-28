@@ -1136,19 +1136,17 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
       return_completed: "Your return has been completed successfully!",
     };
 
-    const subject = `Order #${orderId} Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)
-      }`;
+    const subject = `Order #${orderId} Status Update: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
 
-    let htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f9f9f9;">
-        <h2 style="color: #1a1a1a;">Hi ${userName || ""},</h2>
-        <p>Your order <b>#${orderId}</b> status has been updated to <b>${status.charAt(0).toUpperCase() + status.slice(1)
-      }</b>.</p>
-        <p>${statusMessages[status] || "Order status updated."}</p>
-        ${status === 'delivered' ? '<p><strong>Your invoice is attached to this email for your records.</strong></p>' : ''}
-        <p>Thank you for shopping with BEATEN!</p>
-        <hr style="margin: 32px 0;" />
-        <p style="font-size: 13px; color: #888;">This is an automated email. Please do not reply.</p>
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff;">
+        <h2 style="color: #000000; margin-bottom: 15px;">Hi ${userName || ""},</h2>
+        <p style="margin: 10px 0; line-height: 1.5;">Your order <b>#${orderId}</b> status has been updated to <b>${status.charAt(0).toUpperCase() + status.slice(1)}</b>.</p>
+        <p style="margin: 10px 0; line-height: 1.5;">${statusMessages[status] || "Order status updated."}</p>
+        ${status === 'delivered' ? '<p style="margin: 10px 0; line-height: 1.5;"><strong>Your invoice is attached to this email for your records.</strong></p>' : ''}
+        <p style="margin: 20px 0 10px 0; line-height: 1.5;">Thank you for shopping with BEATEN!</p>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;" />
+        <p style="font-size: 12px; color: #666666;">This is an automated email. Please do not reply.</p>
       </div>
     `;
 
