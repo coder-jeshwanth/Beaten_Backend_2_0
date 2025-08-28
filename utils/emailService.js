@@ -79,13 +79,27 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Horizontal line after header
       doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
       
+      // GSTIN and Date on the same line
+      doc.fontSize(9).font('Helvetica').fillColor('#333333');
+      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 100);
+      
+      // Use order delivery date if available, otherwise current date
+      const deliveryDate = order.deliveredAt ? 
+        new Date(order.deliveredAt).toLocaleDateString("en-IN") : 
+        currentDate;
+      
+      doc.text(`Date: ${deliveryDate}`, margin + pageWidth - 250, margin + 100, { width: 220, align: 'right' });
+      
+      // Horizontal line after GSTIN and Date
+      doc.moveTo(margin, margin + 110).lineTo(margin + pageWidth, margin + 110).stroke();
+      
       // Recipient Address
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#444444');
-      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 105);
+      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 125);
       
       // Recipient details
       doc.fontSize(9).font('Helvetica');
-      let addressY = margin + 120;
+      let addressY = margin + 140;
       
       if (shippingAddress.addressLine1) {
         doc.text('Plot NO ' + shippingAddress.addressLine1, margin + 15, addressY);
@@ -104,27 +118,27 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text(`Mobile NO: ${shippingAddress.phoneNumber || ''}`, margin + 15, addressY);
       
       // Horizontal line after recipient address
-      doc.moveTo(margin, margin + 185).lineTo(margin + pageWidth, margin + 185).stroke();
+      doc.moveTo(margin, margin + 205).lineTo(margin + pageWidth, margin + 205).stroke();
       
       // ORDER NUMBER & PAYMENT INFO
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('ORDER NUMBER:', margin + 15, margin + 200);
-      doc.text(`${order.orderId || ''}`, margin + 90, margin + 200);
+      doc.text('ORDER NUMBER:', margin + 15, margin + 220);
+      doc.text(`${order.orderId || ''}`, margin + 90, margin + 220);
 
-      doc.text('Mode Of Payment:', margin + 180, margin + 200);
-      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 200);
+      doc.text('Mode Of Payment:', margin + 180, margin + 220);
+      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 220);
 
-      doc.text('AWB Number:', margin + 320, margin + 200);
-      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 200);
+      doc.text('AWB Number:', margin + 320, margin + 220);
+      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 220);
 
       doc.fontSize(8).font('Helvetica').fillColor('#555555');
-      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 212);
+      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 232);
 
       // Horizontal line
-      doc.moveTo(margin, margin + 225).lineTo(margin + pageWidth, margin + 225).stroke();
+      doc.moveTo(margin, margin + 245).lineTo(margin + pageWidth, margin + 245).stroke();
 
       // PRODUCT TABLE
-      const tableY = margin + 235;
+      const tableY = margin + 255;
 
       // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
