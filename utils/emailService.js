@@ -25,15 +25,10 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const sgst = isInterState ? 0 : totalGST / 2;
       const igst = isInterState ? totalGST : 0;
 
-      // Create PDF document with custom page size (wider than A4)
-      const customPageSize = {
-        width: 750,  // Increased from A4's 595.28
-        height: 842  // Same as A4's height
-      };
-
+      // Create PDF document with A4 size (standard size as per reference)
       const doc = new PDFDocument({ 
-        size: [customPageSize.width, customPageSize.height],
-        margin: 40,
+        size: 'A4',
+        margin: 30,
         autoFirstPage: true,
         bufferPages: true
       });
@@ -44,9 +39,9 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      // Page dimensions with proper margins
-      const pageWidth = customPageSize.width - 80; // Total usable width
-      const margin = 40; // Increased margin for better readability
+      // Page dimensions matching reference invoice
+      const pageWidth = 535; // A4 width minus margins
+      const margin = 30;
       
       // Enable automatic font size adjustment
       doc.fontSize(8); // Set base font size
@@ -55,17 +50,17 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.lineWidth(0.5);
       doc.rect(margin, margin, pageWidth, 780).stroke();
 
-      // Header Section with TAX INVOICE and BEATEN
+      // Header Section with TAX INVOICE and BEATEN (matching reference)
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
       doc.text('TAX INVOICE', margin + 15, margin + 15);
 
-      doc.fontSize(30).font('Helvetica-Bold');
-      doc.text('BEATEN', margin + pageWidth - 135, margin + 15, { width: 120, align: 'right' });
+      doc.fontSize(28).font('Helvetica-Bold');
+      doc.text('BEATEN', margin + pageWidth - 150, margin + 15, { width: 150, align: 'right' });
 
-      // Contact info under BEATEN
-      doc.fontSize(8).font('Helvetica').fillColor('#555555');
-      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 180, margin + 48, { width: 165, align: 'right' });
-      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 180, margin + 60, { width: 165, align: 'right' });
+      // Contact info under BEATEN (matching reference positioning)
+      doc.fontSize(9).font('Helvetica').fillColor('#555555');
+      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 220, margin + 45, { width: 220, align: 'right' });
+      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 220, margin + 60, { width: 220, align: 'right' });
 
       // GSTIN and Date
       doc.fontSize(8).font('Helvetica').fillColor('#333333');
@@ -128,16 +123,16 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // PRODUCT TABLE
       const tableY = margin + 280;
 
-      // Table headers with wider columns for better content fit
+      // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
       const colWidths = [
-        280,  // Description - widest column for product names
-        100,  // SKU
-        60,   // HSN
-        50,   // Qty
-        80,   // Rate
-        80,   // Amount
-        90    // Total
+        200,  // Description
+        90,   // SKU
+        50,   // HSN
+        40,   // Qty
+        60,   // Rate
+        60,   // Amount
+        70    // Total
       ];
 
       // Calculate positions for columns
@@ -267,73 +262,62 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('Total Amount', margin + 300, taxY + 70);
       doc.text(`₹${order.totalPrice}`, margin + 370, taxY + 70, { align: 'right' });
 
-      // Footer with QR codes (per reference image)
+      // Footer with QR codes (exactly matching reference image)
       const footerY = 650;
 
-      // Add background watermark
-      try {
-        doc.save();
-        doc.fillOpacity(0.03);
-        doc.fontSize(100).font('Helvetica-Bold').fillColor('#999999');
-        doc.text('B', margin + 350, footerY, { align: 'center' });
-        doc.restore();
-      } catch (watermarkError) {
-        console.error('Watermark error:', watermarkError);
-      }
-
-      // QR Codes (left aligned like reference)
+      // QR Codes section
       try {
         // Website QR Code
         const websiteQR = await QRCode.toBuffer('https://beaten.in', {
-          width: 50,
+          width: 60,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(websiteQR, margin + 50, footerY, { width: 50, height: 50 });
+        doc.image(websiteQR, margin + 15, footerY, { width: 60, height: 60 });
 
-        // Create circular background for "Visit Website" label
-        doc.circle(margin + 75, footerY + 65, 15).fill('#eeeeee');
-        doc.fontSize(7).font('Helvetica').fillColor('#444444');
-        doc.text('Visit Website', margin + 40, footerY + 60, { width: 70, align: 'center' });
+        // Visit Website button with gray background
+        doc.roundedRect(margin + 15, footerY + 65, 60, 25, 3).fill('#f5f5f5');
+        doc.fontSize(9).font('Helvetica').fillColor('#333333');
+        doc.text('Visit Website', margin + 15, footerY + 70, { width: 60, align: 'center' });
 
         // Social Media QR Code
         const socialQR = await QRCode.toBuffer('https://instagram.com/beaten.official', {
-          width: 50,
+          width: 60,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(socialQR, margin + 150, footerY, { width: 50, height: 50 });
+        doc.image(socialQR, margin + 85, footerY, { width: 60, height: 60 });
 
-        // Create oval background for "FOLLOW US" label
-        doc.rect(margin + 140, footerY + 60, 70, 20).fill('#333333');
-        doc.fontSize(7).font('Helvetica').fillColor('#ffffff');
-        doc.text('FOLLOW US', margin + 140, footerY + 65, { width: 70, align: 'center' });
+        // FOLLOW US button with dark background
+        doc.roundedRect(margin + 85, footerY + 65, 60, 25, 3).fill('#333333');
+        doc.fontSize(9).font('Helvetica').fillColor('#ffffff');
+        doc.text('FOLLOW US', margin + 85, footerY + 70, { width: 60, align: 'center' });
 
       } catch (qrError) {
         console.error('QR Code generation error:', qrError);
       }
 
-      // Thank you message - italicized like reference
-      doc.fontSize(10).font('Helvetica-Oblique').fillColor('#000000');
-      doc.text('Thank You For shopping with BEATEN', margin + 50, footerY + 110, { width: pageWidth - 100, align: 'center' });
+      // Thank you message - matching reference style
+      doc.fontSize(11).font('Helvetica-Oblique').fillColor('#000000');
+      doc.text('Thank You For shopping with BEATEN', margin + 15, footerY + 110, { width: pageWidth - 30, align: 'left' });
 
-      // Legal disclaimer (smaller font)
-      doc.fontSize(7).font('Helvetica').fillColor('#444444');
+      // Legal disclaimer (matching reference font and layout)
+      doc.fontSize(8).font('Helvetica').fillColor('#444444');
       doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.',
-        margin + 40, footerY + 130, { width: pageWidth - 80, align: 'center' });
+        margin + 15, footerY + 135, { width: pageWidth - 30, align: 'left' });
       doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.',
-        margin + 40, footerY + 142, { width: pageWidth - 80, align: 'center' });
+        margin + 15, footerY + 150, { width: pageWidth - 30, align: 'left' });
 
       // Bottom registered office line
-      doc.fontSize(6).font('Helvetica').fillColor('#666666');
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
-        margin + 15, footerY + 160, { width: pageWidth - 30, align: 'center' });
+        margin + 15, footerY + 170, { width: pageWidth - 30, align: 'left' });
 
-      // Bottom tagline - exactly like reference
-      doc.fontSize(7).font('Helvetica-Oblique').fillColor('#666666');
-      doc.text('Elevate your look with BEATEN.....', margin + 15, footerY + 175);
-      doc.fontSize(7).font('Helvetica').fillColor('#666666');
-      doc.text('www.beaten.in', margin + pageWidth - 70, footerY + 175);
+      // Bottom tagline - matching reference exactly
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666');
+      doc.text('Elevate your look with BEATEN....', margin + 15, footerY + 190);
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
+      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 190);
 
       doc.end();
     } catch (error) {
