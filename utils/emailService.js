@@ -61,9 +61,9 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const textWidth = doc.widthOfString('TAX INVOICE');
       doc.text('TAX INVOICE', margin + (pageWidth - textWidth) / 2, margin + 15);
       
-      // Right side - BEATEN
+      // Right side - BEATEN (with more spacing from the right border)
       doc.fontSize(32).font('Helvetica-Bold');
-      doc.text('BEATEN', margin + pageWidth - 170, margin + 15, { width: 150, align: 'right' });
+      doc.text('BEATEN', margin + pageWidth - 200, margin + 15, { width: 170, align: 'right' });
       
       // Left side - Address details (below Seller/Consignor)
       doc.fontSize(9).font('Helvetica').fillColor('#444444');
@@ -71,10 +71,10 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('Siddhartha Enclave, Patelguda,', margin + 15, margin + 50);
       doc.text('Beeramguda, Pincode : 502319', margin + 15, margin + 65);
       
-      // Right side - Contact info (below BEATEN)
+      // Right side - Contact info (below BEATEN) - with more spacing from right border
       doc.fontSize(9).font('Helvetica').fillColor('#444444');
-      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 220, margin + 55, { width: 220, align: 'right' });
-      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 220, margin + 70, { width: 220, align: 'right' });
+      doc.text('Customer Support: +91 7799120325', margin + pageWidth - 250, margin + 55, { width: 220, align: 'right' });
+      doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 250, margin + 70, { width: 220, align: 'right' });
       
       // Horizontal line after header
       doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
