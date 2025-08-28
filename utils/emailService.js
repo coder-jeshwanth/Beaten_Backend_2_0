@@ -50,43 +50,42 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.lineWidth(0.5);
       doc.rect(margin, margin, pageWidth, 780).stroke();
 
-      // Center TAX INVOICE
+      // Create a single line for left, center, right aligned content
+      
+      // Left side - Seller/Consignor details
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Seller/Consignor: Beaten apparels', margin + 15, margin + 15);
+      
+      // Center - TAX INVOICE
       doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
       const textWidth = doc.widthOfString('TAX INVOICE');
       doc.text('TAX INVOICE', margin + (pageWidth - textWidth) / 2, margin + 15);
       
-      // Left side - Seller/Consignor details
-      doc.fontSize(9).font('Helvetica-Bold');
-      doc.text('Seller/Consignor: Beaten apparels', margin + 15, margin + 40);
-      
-      doc.fontSize(9).font('Helvetica');
-      doc.text('Plot NO 91, Block B, Road NO-4,', margin + 15, margin + 55);
-      doc.text('Siddhartha Enclave, Patelguda,', margin + 15, margin + 70);
-      doc.text('Beeramguda, Pincode : 502319', margin + 15, margin + 85);
-      
-      // Right side - BEATEN and contact info
+      // Right side - BEATEN
       doc.fontSize(32).font('Helvetica-Bold');
       doc.text('BEATEN', margin + pageWidth - 170, margin + 15, { width: 150, align: 'right' });
       
-      doc.fontSize(9).font('Helvetica');
+      // Left side - Address details (below Seller/Consignor)
+      doc.fontSize(9).font('Helvetica').fillColor('#444444');
+      doc.text('Plot NO 91, Block B, Road NO-4,', margin + 15, margin + 35);
+      doc.text('Siddhartha Enclave, Patelguda,', margin + 15, margin + 50);
+      doc.text('Beeramguda, Pincode : 502319', margin + 15, margin + 65);
+      
+      // Right side - Contact info (below BEATEN)
+      doc.fontSize(9).font('Helvetica').fillColor('#444444');
       doc.text('Customer Support: +91 7799120325', margin + pageWidth - 220, margin + 55, { width: 220, align: 'right' });
       doc.text('Email: customerSupport@beaten.in', margin + pageWidth - 220, margin + 70, { width: 220, align: 'right' });
       
-      // GSTIN and Date
-      doc.fontSize(8).font('Helvetica').fillColor('#333333');
-      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 100);
-      doc.text(`Dated: ${currentDate}`, margin + pageWidth - 90, margin + 100, { width: 75, align: 'right' });
-      
-      // Horizontal line
-      doc.moveTo(margin, margin + 115).lineTo(margin + pageWidth, margin + 115).stroke();
+      // Horizontal line after header
+      doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
       
       // Recipient Address
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#444444');
-      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 130);
+      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 105);
       
       // Recipient details
       doc.fontSize(9).font('Helvetica');
-      let addressY = margin + 145;
+      let addressY = margin + 120;
       
       if (shippingAddress.addressLine1) {
         doc.text('Plot NO ' + shippingAddress.addressLine1, margin + 15, addressY);
@@ -105,27 +104,27 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text(`Mobile NO: ${shippingAddress.phoneNumber || ''}`, margin + 15, addressY);
       
       // Horizontal line after recipient address
-      doc.moveTo(margin, margin + 210).lineTo(margin + pageWidth, margin + 210).stroke();
+      doc.moveTo(margin, margin + 185).lineTo(margin + pageWidth, margin + 185).stroke();
       
       // ORDER NUMBER & PAYMENT INFO
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('ORDER NUMBER:', margin + 15, margin + 225);
-      doc.text(`${order.orderId || ''}`, margin + 90, margin + 225);
+      doc.text('ORDER NUMBER:', margin + 15, margin + 200);
+      doc.text(`${order.orderId || ''}`, margin + 90, margin + 200);
 
-      doc.text('Mode Of Payment:', margin + 180, margin + 225);
-      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 225);
+      doc.text('Mode Of Payment:', margin + 180, margin + 200);
+      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 200);
 
-      doc.text('AWB Number:', margin + 320, margin + 225);
-      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 225);
+      doc.text('AWB Number:', margin + 320, margin + 200);
+      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 200);
 
       doc.fontSize(8).font('Helvetica').fillColor('#555555');
-      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 237);
+      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 212);
 
       // Horizontal line
-      doc.moveTo(margin, margin + 250).lineTo(margin + pageWidth, margin + 250).stroke();
+      doc.moveTo(margin, margin + 225).lineTo(margin + pageWidth, margin + 225).stroke();
 
       // PRODUCT TABLE
-      const tableY = margin + 260;
+      const tableY = margin + 235;
 
       // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
