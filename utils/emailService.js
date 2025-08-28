@@ -58,8 +58,8 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       
       // Center - TAX INVOICE
       doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
-      const textWidth = doc.widthOfString('TAX INVOICE');
-      doc.text('TAX INVOICE', margin + (pageWidth - textWidth) / 2, margin + 15);
+      const taxInvoiceWidth = doc.widthOfString('TAX INVOICE');
+      doc.text('TAX INVOICE', margin + (pageWidth - taxInvoiceWidth) / 2, margin + 15);
       
       // Right side - BEATEN (with more spacing from the right border)
       doc.fontSize(32).font('Helvetica-Bold');
@@ -79,26 +79,36 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Horizontal line after header
       doc.moveTo(margin, margin + 90).lineTo(margin + pageWidth, margin + 90).stroke();
       
-      // GSTIN and Date on the same line
+      // GSTIN and Date centered on the same line
       doc.fontSize(9).font('Helvetica').fillColor('#333333');
-      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 15, margin + 100);
+      
+      // Calculate the center position for GSTIN and Date
+      const gstinText = 'GSTIN: 36ABEFB6155C1ZQ';
       
       // Use order delivery date if available, otherwise current date
       const deliveryDate = order.deliveredAt ? 
         new Date(order.deliveredAt).toLocaleDateString("en-IN") : 
         currentDate;
       
-      doc.text(`Date: ${deliveryDate}`, margin + pageWidth - 250, margin + 100, { width: 220, align: 'right' });
+      const dateText = `Date: ${deliveryDate}`;
+      const combinedText = `${gstinText}                ${dateText}`;
+      const gstDateWidth = doc.widthOfString(combinedText);
+      
+      // Position the text centered on the page
+      doc.text(combinedText, margin + (pageWidth - gstDateWidth) / 2, margin + 100);
       
       // Horizontal line after GSTIN and Date
       doc.moveTo(margin, margin + 110).lineTo(margin + pageWidth, margin + 110).stroke();
       
-      // Recipient Address
+      // Recipient Address - Left aligned
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#444444');
-      doc.text('Recipient Address: ' + (shippingAddress.fullName || ''), margin + 15, margin + 125);
+      doc.text('Recipient Address:', margin + 15, margin + 125);
       
-      // Recipient details
-      doc.fontSize(9).font('Helvetica');
+      // Recipient Name on the same line
+      doc.fontSize(9).font('Helvetica').fillColor('#444444');
+      doc.text(shippingAddress.fullName || '', margin + 105, margin + 125);
+      
+      // Start address details on the next line
       let addressY = margin + 140;
       
       if (shippingAddress.addressLine1) {
