@@ -25,13 +25,19 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const sgst = isInterState ? 0 : totalGST / 2;
       const igst = isInterState ? totalGST : 0;
 
-      // Create PDF document with auto-page-break enabled
+      // Create PDF document with custom page size (wider than A4)
+      const customPageSize = {
+        width: 750,  // Increased from A4's 595.28
+        height: 842  // Same as A4's height
+      };
+
       const doc = new PDFDocument({ 
-        size: 'A4', 
-        margin: 30,
+        size: [customPageSize.width, customPageSize.height],
+        margin: 40,
         autoFirstPage: true,
         bufferPages: true
       });
+      
       const chunks = [];
 
       doc.on('data', chunk => chunks.push(chunk));
@@ -39,8 +45,8 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.on('error', err => reject(err));
 
       // Page dimensions with proper margins
-      const pageWidth = 535; // A4 width minus margins
-      const margin = 30;
+      const pageWidth = customPageSize.width - 80; // Total usable width
+      const margin = 40; // Increased margin for better readability
       
       // Enable automatic font size adjustment
       doc.fontSize(8); // Set base font size
@@ -122,9 +128,17 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // PRODUCT TABLE
       const tableY = margin + 280;
 
-      // Table headers - Using exact width proportions from reference image
+      // Table headers with wider columns for better content fit
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
-      const colWidths = [180, 80, 40, 40, 60, 60, 75]; // Width proportions from reference
+      const colWidths = [
+        280,  // Description - widest column for product names
+        100,  // SKU
+        60,   // HSN
+        50,   // Qty
+        80,   // Rate
+        80,   // Amount
+        90    // Total
+      ];
 
       // Calculate positions for columns
       let xPos = margin + 15;
