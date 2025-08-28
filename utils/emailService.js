@@ -26,7 +26,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const igst = isInterState ? totalGST : 0;
       
       // Create PDF document
-      const doc = new PDFDocument({margin: 0, size: 'A4'});
+      const doc = new PDFDocument({margin: 30, size: 'A4'});
       const chunks = [];
       
       doc.on('data', chunk => chunks.push(chunk));
@@ -34,213 +34,203 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.on('error', err => reject(err));
       
       // Page dimensions
-      const pageWidth = 595.28;
-      const pageHeight = 841.89;
-      const margin = 20;
+      const pageWidth = 535; // A4 width minus margins
+      const leftMargin = 30;
+      const rightMargin = 535;
       
-      // Helper function to draw border
-      const drawBorder = (x, y, width, height) => {
-        doc.rect(x, y, width, height).stroke('#000000');
+      // Helper function to draw thin border
+      const drawThinBorder = (x, y, width, height) => {
+        doc.rect(x, y, width, height).lineWidth(0.5).stroke('#000000');
       };
       
       // HEADER SECTION
-      const headerHeight = 80;
-      drawBorder(margin, margin, pageWidth - 2 * margin, headerHeight);
+      const headerY = 30;
+      drawThinBorder(leftMargin, headerY, pageWidth, 70);
       
-      // Left section - Seller details
+      // TAX INVOICE (left aligned)
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('TAX INVOICE', leftMargin + 15, headerY + 25);
+      
+      // BEATEN brand (right aligned, larger font)
+      doc.fontSize(28).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('BEATEN', rightMargin - 120, headerY + 15, {width: 100, align: 'right'});
+      
+      // Customer support details (below BEATEN, right aligned)
+      doc.fontSize(9).font('Helvetica').fillColor('#333333');
+      doc.text('Customer Support: +91 7799120325', rightMargin - 180, headerY + 45, {width: 160, align: 'right'});
+      doc.text('Email: customerSupport@beaten.in', rightMargin - 180, headerY + 57, {width: 160, align: 'right'});
+      
+      // GSTIN and Date line
+      const gstinY = headerY + 70;
+      drawThinBorder(leftMargin, gstinY, pageWidth, 20);
+      doc.fontSize(9).font('Helvetica').fillColor('#000000');
+      doc.text('GSTIN: 36ABEFB6155C1ZQ', leftMargin + 15, gstinY + 6);
+      doc.text(`Dated: ${currentDate}`, rightMargin - 100, gstinY + 6, {width: 85, align: 'right'});
+      
+      // SELLER/CONSIGNOR SECTION
+      const sellerY = gstinY + 30;
       doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('Seller/Consignor: Beaten apparels', margin + 10, margin + 15);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('Plot NO 91, Block B, Road NO-4,', margin + 10, margin + 30);
-      doc.text('Siddhartha Enclave, Patelguda,', margin + 10, margin + 42);
-      doc.text('Beeramguda, Pincode : 502319', margin + 10, margin + 54);
+      doc.text('Seller/Consignor: Beaten apparels', leftMargin + 15, sellerY);
       
-      // Center section - TAX INVOICE
-      doc.fontSize(14).font('Helvetica-Bold');
-      doc.text('TAX INVOICE', pageWidth/2, margin + 35, {align: 'center'});
+      doc.fontSize(8).font('Helvetica').fillColor('#555555');
+      doc.text('Plot NO 91, Block B, Road NO-4,', leftMargin + 15, sellerY + 15);
+      doc.text('Siddhartha Enclave, Patelguda,', leftMargin + 15, sellerY + 27);
+      doc.text('Beeramguda, Pincode : 502319', leftMargin + 15, sellerY + 39);
       
-      // Right section - BEATEN brand and contact
-      doc.fontSize(24).font('Helvetica-Bold');
-      doc.text('BEATEN', pageWidth - 120, margin + 15);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('Customer Support: +91 7799120325', pageWidth - 150, margin + 45);
-      doc.text('Email: customerSupport@beaten.in', pageWidth - 150, margin + 57);
+      // RECIPIENT ADDRESS SECTION
+      const recipientY = sellerY + 65;
+      doc.fontSize(10).font('Helvetica-Bold').fillColor('#000000');
+      doc.text(`Recipient Address: ${shippingAddress.fullName}`, leftMargin + 15, recipientY);
       
-      // Bottom bar under header
-      const bottomBarY = margin + headerHeight;
-      drawBorder(margin, bottomBarY, pageWidth - 2 * margin, 20);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('GSTIN: 36ABEFB6155C1ZQ', margin + 10, bottomBarY + 6);
-      doc.text(`Dated: ${currentDate}`, pageWidth - 120, bottomBarY + 6);
+      doc.fontSize(8).font('Helvetica').fillColor('#333333');
+      let addressY = recipientY + 15;
+      doc.text(shippingAddress.addressLine1, leftMargin + 15, addressY);
+      addressY += 12;
       
-      // MAIN CONTENT SECTION
-      const contentY = bottomBarY + 20;
-      const contentHeight = 400;
-      drawBorder(margin, contentY, pageWidth - 2 * margin, contentHeight);
-      
-      // Recipient Address
-      doc.fontSize(10).font('Helvetica-Bold');
-      doc.text(`Recipient Address: ${shippingAddress.fullName}`, margin + 10, contentY + 15);
-      doc.fontSize(9).font('Helvetica');
-      doc.text(shippingAddress.addressLine1, margin + 10, contentY + 30);
       if (shippingAddress.addressLine2) {
-        doc.text(shippingAddress.addressLine2, margin + 10, contentY + 42);
-        doc.text(`${shippingAddress.city}, ${shippingAddress.state}`, margin + 10, contentY + 54);
-        doc.text(`Pin: ${shippingAddress.pincode}`, margin + 10, contentY + 66);
-        doc.text(`Mobile NO: ${shippingAddress.phoneNumber}`, margin + 10, contentY + 78);
-      } else {
-        doc.text(`${shippingAddress.city}, ${shippingAddress.state}`, margin + 10, contentY + 42);
-        doc.text(`Pin: ${shippingAddress.pincode}`, margin + 10, contentY + 54);
-        doc.text(`Mobile NO: ${shippingAddress.phoneNumber}`, margin + 10, contentY + 66);
+        doc.text(shippingAddress.addressLine2, leftMargin + 15, addressY);
+        addressY += 12;
       }
       
-      // Order Information
-      const orderInfoY = contentY + 100;
-      doc.fontSize(10).font('Helvetica-Bold');
-      doc.text(`ORDER NUMBER: ${order.orderId}`, margin + 10, orderInfoY);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('Carrier Name: DELHIVERY', margin + 10, orderInfoY + 15);
+      doc.text(`${shippingAddress.city}, ${shippingAddress.state}`, leftMargin + 15, addressY);
+      addressY += 12;
+      doc.text(`Pin: ${shippingAddress.pincode}`, leftMargin + 15, addressY);
+      addressY += 12;
+      doc.text(`Mobile NO: ${shippingAddress.phoneNumber}`, leftMargin + 15, addressY);
       
-      // Right side order info
-      doc.fontSize(10).font('Helvetica-Bold');
-      doc.text(`Mode Of Payment: ${order.paymentInfo?.method === 'COD' ? 'COD' : 'NONCOD'}`, pageWidth - 200, orderInfoY);
-      doc.fontSize(9).font('Helvetica');
-      doc.text(`AWB Number: ${order.awbNumber || 'Not Available'}`, pageWidth - 200, orderInfoY + 15);
+      // ORDER & PAYMENT INFO (single row, evenly spaced)
+      const orderInfoY = addressY + 25;
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      doc.text(`ORDER NUMBER: ${order.orderId}`, leftMargin + 15, orderInfoY);
+      doc.text(`Mode Of Payment: ${order.paymentInfo?.method === 'COD' ? 'COD' : 'PREPAID'}`, leftMargin + 200, orderInfoY);
+      doc.text(`AWB Number: ${order.awbNumber || 'Pending'}`, leftMargin + 380, orderInfoY);
       
-      // Product Table
-      const tableY = orderInfoY + 40;
+      doc.fontSize(8).font('Helvetica').fillColor('#555555');
+      doc.text('Carrier Name: DELHIVERY', leftMargin + 15, orderInfoY + 12);
+      
+      // PRODUCT TABLE
+      const tableY = orderInfoY + 35;
       const tableHeaders = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
-      const colWidths = [120, 80, 50, 40, 60, 60, 60];
-      let colX = margin + 10;
+      const colWidths = [130, 70, 45, 35, 55, 55, 55];
+      const colPositions = [leftMargin + 15];
+      
+      // Calculate column positions
+      for (let i = 0; i < colWidths.length - 1; i++) {
+        colPositions.push(colPositions[i] + colWidths[i]);
+      }
       
       // Table header
-      doc.fontSize(9).font('Helvetica-Bold');
+      drawThinBorder(leftMargin + 10, tableY, pageWidth - 20, 20);
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      
       tableHeaders.forEach((header, i) => {
-        doc.rect(colX, tableY, colWidths[i], 20).stroke('#000000');
-        doc.text(header, colX + 5, tableY + 6, {width: colWidths[i] - 10, align: 'center'});
-        colX += colWidths[i];
+        const align = (i >= 3) ? 'center' : 'left'; // Align numbers to center, text to left
+        doc.text(header, colPositions[i], tableY + 6, {width: colWidths[i], align: align});
       });
       
       // Table rows
       let rowY = tableY + 20;
-      doc.fontSize(9).font('Helvetica');
+      doc.fontSize(8).font('Helvetica').fillColor('#000000');
       
       order.orderItems.forEach((item) => {
-        colX = margin + 10;
+        const rowHeight = 22;
+        drawThinBorder(leftMargin + 10, rowY, pageWidth - 20, rowHeight);
+        
         const itemAmount = item.price * item.quantity;
-        const itemTotal = itemAmount + (item.gst * item.quantity);
+        const itemGST = item.gst * item.quantity;
+        const itemTotal = itemAmount + itemGST;
         
-        // Draw row
-        doc.rect(colX, rowY, colWidths[0], 25).stroke('#000000');
-        doc.text(item.name, colX + 5, rowY + 8, {width: colWidths[0] - 10, align: 'left'});
-        colX += colWidths[0];
+        // Row data
+        const rowData = [
+          item.name,
+          item.sku || 'BT-001',
+          '6109',
+          item.quantity.toString(),
+          `₹${item.price}`,
+          `₹${itemGST.toFixed(2)}`,
+          `₹${itemTotal}`
+        ];
         
-        doc.rect(colX, rowY, colWidths[1], 25).stroke('#000000');
-        doc.text(item.sku || 'BT-001', colX + 5, rowY + 8, {width: colWidths[1] - 10, align: 'center'});
-        colX += colWidths[1];
+        rowData.forEach((data, i) => {
+          const align = (i >= 3) ? 'center' : 'left';
+          doc.text(data, colPositions[i], rowY + 7, {width: colWidths[i], align: align});
+        });
         
-        doc.rect(colX, rowY, colWidths[2], 25).stroke('#000000');
-        doc.text('6109', colX + 5, rowY + 8, {width: colWidths[2] - 10, align: 'center'});
-        colX += colWidths[2];
-        
-        doc.rect(colX, rowY, colWidths[3], 25).stroke('#000000');
-        doc.text(item.quantity.toString(), colX + 5, rowY + 8, {width: colWidths[3] - 10, align: 'center'});
-        colX += colWidths[3];
-        
-        doc.rect(colX, rowY, colWidths[4], 25).stroke('#000000');
-        doc.text(`₹${item.price}`, colX + 5, rowY + 8, {width: colWidths[4] - 10, align: 'center'});
-        colX += colWidths[4];
-        
-        doc.rect(colX, rowY, colWidths[5], 25).stroke('#000000');
-        doc.text(`₹${(item.gst * item.quantity).toFixed(2)}`, colX + 5, rowY + 8, {width: colWidths[5] - 10, align: 'center'});
-        colX += colWidths[5];
-        
-        doc.rect(colX, rowY, colWidths[6], 25).stroke('#000000');
-        doc.text(`₹${itemTotal}`, colX + 5, rowY + 8, {width: colWidths[6] - 10, align: 'center'});
-        
-        rowY += 25;
+        rowY += rowHeight;
       });
       
-      // Tax & Totals Table
-      const totalsY = rowY + 20;
-      const totalsWidth = 200;
-      const totalsX = pageWidth - margin - totalsWidth;
+      // TAX BREAKDOWN (below table, right aligned)
+      const taxY = rowY + 15;
+      const taxWidth = 150;
+      const taxX = rightMargin - taxWidth + 15;
+      
+      doc.fontSize(9).font('Helvetica').fillColor('#000000');
       
       // CGST
-      doc.rect(totalsX, totalsY, totalsWidth/2, 20).stroke('#000000');
-      doc.fontSize(9).font('Helvetica-Bold');
-      doc.text('CGST', totalsX + 5, totalsY + 6, {align: 'right', width: totalsWidth/2 - 10});
-      doc.rect(totalsX + totalsWidth/2, totalsY, totalsWidth/2, 20).stroke('#000000');
-      doc.text(`₹${cgst.toFixed(2)}`, totalsX + totalsWidth/2 + 5, totalsY + 6, {align: 'right', width: totalsWidth/2 - 10});
+      doc.text('CGST:', taxX, taxY, {width: 75, align: 'left'});
+      doc.text(`₹${cgst.toFixed(2)}`, taxX + 75, taxY, {width: 75, align: 'right'});
       
       // SGST
-      doc.rect(totalsX, totalsY + 20, totalsWidth/2, 20).stroke('#000000');
-      doc.text('SGST', totalsX + 5, totalsY + 26, {align: 'right', width: totalsWidth/2 - 10});
-      doc.rect(totalsX + totalsWidth/2, totalsY + 20, totalsWidth/2, 20).stroke('#000000');
-      doc.text(`₹${sgst.toFixed(2)}`, totalsX + totalsWidth/2 + 5, totalsY + 26, {align: 'right', width: totalsWidth/2 - 10});
+      doc.text('SGST:', taxX, taxY + 15, {width: 75, align: 'left'});
+      doc.text(`₹${sgst.toFixed(2)}`, taxX + 75, taxY + 15, {width: 75, align: 'right'});
       
       // IGST
-      doc.rect(totalsX, totalsY + 40, totalsWidth/2, 20).stroke('#000000');
-      doc.text('IGST', totalsX + 5, totalsY + 46, {align: 'right', width: totalsWidth/2 - 10});
-      doc.rect(totalsX + totalsWidth/2, totalsY + 40, totalsWidth/2, 20).stroke('#000000');
-      doc.text(igst > 0 ? `₹${igst.toFixed(2)}` : '-', totalsX + totalsWidth/2 + 5, totalsY + 46, {align: 'right', width: totalsWidth/2 - 10});
+      doc.text('IGST:', taxX, taxY + 30, {width: 75, align: 'left'});
+      doc.text(igst > 0 ? `₹${igst.toFixed(2)}` : '-', taxX + 75, taxY + 30, {width: 75, align: 'right'});
       
-      // Total Amount
-      doc.rect(totalsX, totalsY + 60, totalsWidth/2, 20).stroke('#000000');
-      doc.text('Total Amount', totalsX + 5, totalsY + 66, {align: 'right', width: totalsWidth/2 - 10});
-      doc.rect(totalsX + totalsWidth/2, totalsY + 60, totalsWidth/2, 20).stroke('#000000');
-      doc.text(`₹${order.totalPrice}`, totalsX + totalsWidth/2 + 5, totalsY + 66, {align: 'right', width: totalsWidth/2 - 10});
+      // Total Amount (bold)
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Total Amount:', taxX, taxY + 50, {width: 75, align: 'left'});
+      doc.text(`₹${order.totalPrice}`, taxX + 75, taxY + 50, {width: 75, align: 'right'});
       
       // FOOTER SECTION
-      const footerY = contentY + contentHeight;
-      const footerHeight = 200;
-      drawBorder(margin, footerY, pageWidth - 2 * margin, footerHeight);
+      const footerY = 650;
+      drawThinBorder(leftMargin, footerY, pageWidth, 120);
       
-      // QR Codes section
+      // QR Codes section (two QR codes horizontally spaced)
       try {
         // Website QR Code
         const websiteQR = await QRCode.toBuffer('https://beaten.in', { 
-          width: 60, 
+          width: 50, 
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(websiteQR, margin + 80, footerY + 20, { width: 60, height: 60 });
+        doc.image(websiteQR, leftMargin + 80, footerY + 15, { width: 50, height: 50 });
         
         // Social Media QR Code
         const socialQR = await QRCode.toBuffer('https://instagram.com/beaten.official', { 
-          width: 60, 
+          width: 50, 
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(socialQR, margin + 250, footerY + 20, { width: 60, height: 60 });
+        doc.image(socialQR, leftMargin + 300, footerY + 15, { width: 50, height: 50 });
         
-        // QR labels
-        doc.fontSize(9).font('Helvetica');
-        doc.text('Visit Website', margin + 70, footerY + 85, {width: 80, align: 'center'});
-        doc.text('Follow Us', margin + 240, footerY + 85, {width: 80, align: 'center'});
+        // QR labels (smaller font)
+        doc.fontSize(8).font('Helvetica').fillColor('#666666');
+        doc.text('Visit Website', leftMargin + 70, footerY + 70, {width: 70, align: 'center'});
+        doc.text('Follow Us', leftMargin + 290, footerY + 70, {width: 70, align: 'center'});
         
       } catch (qrError) {
         console.error('QR Code generation error:', qrError);
       }
       
-      // Thank you message
+      // Thank you message (centered, same style)
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('Thank You For shopping with BEATEN', margin + 20, footerY + 110, {width: pageWidth - 40, align: 'center'});
+      doc.text('Thank You For shopping with BEATEN', leftMargin + 20, footerY + 85, {width: pageWidth - 40, align: 'center'});
       
-      // Disclaimer
-      doc.fontSize(10).font('Helvetica').fillColor('#000000');
-      doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.', margin + 20, footerY + 130, {width: pageWidth - 40, align: 'center'});
-      doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.', margin + 20, footerY + 150, {width: pageWidth - 40, align: 'center'});
+      // Legal disclaimer (smaller, lighter font)
+      doc.fontSize(8).font('Helvetica').fillColor('#777777');
+      doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes. This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.', leftMargin + 20, footerY + 100, {width: pageWidth - 40, align: 'center'});
       
-      // Registered office
-      doc.fontSize(9).font('Helvetica');
-      doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave, Patelguda, Beeramguda, Pincode : 502319', margin + 20, footerY + 175, {width: pageWidth - 40, align: 'center'});
+      // Registered office (bottom, smaller font)
+      doc.fontSize(7).font('Helvetica').fillColor('#888888');
+      doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave, Patelguda, Beeramguda, Pincode : 502319', leftMargin + 20, footerY + 125, {width: pageWidth - 40, align: 'center'});
       
-      // Tagline and website
-      doc.fontSize(9).font('Helvetica-Oblique'); // Use Oblique for italic
-      doc.text('Elevate your look with BEATEN.....', margin + 20, footerY + 190);
-      doc.fontSize(9).font('Helvetica');
-      doc.text('www.beaten.in', pageWidth - 100, footerY + 190);
+      // Bottom tagline and website (smaller font)
+      doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666');
+      doc.text('Elevate your look with BEATEN.....', leftMargin + 20, footerY + 140);
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
+      doc.text('www.beaten.in', rightMargin - 80, footerY + 140, {width: 60, align: 'right'});
       
       doc.end();
     } catch (error) {
