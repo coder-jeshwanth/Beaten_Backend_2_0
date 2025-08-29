@@ -214,23 +214,31 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Horizontal line before product table
       doc.moveTo(margin, margin + 245).lineTo(margin + pageWidth, margin + 245).stroke();
 
-      // PRODUCT TABLE
+      // PRODUCT TABLE - Centered with margins on both sides
       const tableY = margin + 255;
-
-      // Table headers matching reference invoice exactly
+      
+      // Add extra side margins for better table centering
+      const tableSideMargin = 40;
+      const tableStartX = margin + tableSideMargin;
+      const tableWidth = pageWidth - (tableSideMargin * 2);
+      
+      // Table headers
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
+      
+      // Adjusted column widths to fit within the centered table
+      // Distribution is proportional but with more emphasis on the Description column
       const colWidths = [
-        200,  // Description
-        90,   // SKU
-        50,   // HSN
-        40,   // Qty
-        60,   // Rate
-        60,   // Amount
-        70    // Total
+        Math.floor(tableWidth * 0.30),  // Description - 30%
+        Math.floor(tableWidth * 0.15),  // SKU - 15%
+        Math.floor(tableWidth * 0.10),  // HSN - 10%
+        Math.floor(tableWidth * 0.08),  // Qty - 8%
+        Math.floor(tableWidth * 0.12),  // Rate - 12%
+        Math.floor(tableWidth * 0.12),  // Amount - 12%
+        Math.floor(tableWidth * 0.13)   // Total - 13%
       ];
-
+      
       // Calculate positions for columns
-      let xPos = margin + 15;
+      let xPos = tableStartX;
       const colPositions = [xPos];
 
       for (let i = 0; i < colWidths.length - 1; i++) {
@@ -238,28 +246,25 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         colPositions.push(xPos);
       }
 
-      // Draw table header with automatic font sizing
+      // Draw table header background
+      doc.rect(tableStartX, tableY - 5, tableWidth, 20).fillAndStroke('#f5f5f5', '#000000');
+      
+      // Draw table header with better styling
       doc.font('Helvetica-Bold').fillColor('#000000');
-      const maxHeaderFontSize = 8;
-      const minHeaderFontSize = 6;
-
-      // Calculate optimal font size for headers
-      let headerFontSize = maxHeaderFontSize;
-      headers.forEach((header, i) => {
-        const width = colWidths[i];
-        while (headerFontSize > minHeaderFontSize && 
-               doc.widthOfString(header) > width - 4) {
-          headerFontSize--;
-        }
-      });
-
+      const headerFontSize = 8;
       doc.fontSize(headerFontSize);
 
-      // Draw header cells
+      // Draw header cells with proper alignment
       for (let i = 0; i < headers.length; i++) {
-        const align = i < 3 ? 'left' : 'center';
-        doc.text(headers[i], colPositions[i], tableY, { 
-          width: colWidths[i], 
+        // Determine alignment based on column type
+        const align = i < 3 ? 'left' : (i === 3 ? 'center' : 'right');
+        
+        // Add a small padding within cells
+        const cellPadding = 4;
+        const xPosition = i < 3 ? colPositions[i] + cellPadding : colPositions[i];
+        
+        doc.text(headers[i], xPosition, tableY, { 
+          width: colWidths[i] - cellPadding, 
           align,
           ellipsis: true
         });
@@ -271,90 +276,144 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       }
 
       // Horizontal line below header
-      doc.moveTo(margin + 15, tableY + 15).lineTo(margin + pageWidth - 15, tableY + 15).stroke();
+      doc.moveTo(tableStartX, tableY + 15).lineTo(tableStartX + tableWidth, tableY + 15).stroke();
 
       // Table rows
       let rowY = tableY + 20;
       doc.fontSize(7).font('Helvetica').fillColor('#000000'); // Slightly smaller font for content
 
+      // Fetch and display order items
       order.orderItems.forEach((item) => {
-        const itemAmount = item.gst * item.quantity;
-        const itemTotal = item.price * item.quantity + itemAmount;
+        // Calculate item amounts
+        const price = parseFloat(item.price) || 0;
+        const gst = parseFloat(item.gst) || 0;
+        const quantity = parseInt(item.quantity) || 0;
+        
+        // Calculate values for display
+        const itemAmount = gst * quantity;
+        const itemTotal = price * quantity + itemAmount;
+        
+        // Get HSN code with fallback
+        const hsnCode = item.hsnCode || item.hsn || '6109';
 
-        // Row data
+        // Row data with proper formatting
         const rowData = [
-          item.name,
-          item.sku || 'BT-001',
-          '6109',
-          item.quantity.toString(),
-          `₹${item.price}`,
+          item.name || item.productName || 'Product',
+          item.sku || item.productSku || 'BT-001',
+          hsnCode,
+          quantity.toString(),
+          `₹${price.toFixed(2)}`,
           `₹${itemAmount.toFixed(2)}`,
-          `₹${itemTotal}`
+          `₹${itemTotal.toFixed(2)}`
         ];
 
-        // Auto-calculate font size for product name (first column)
-        const maxRowFontSize = 7;
-        const minRowFontSize = 6;
-        let rowFontSize = maxRowFontSize;
-        
-        while (rowFontSize > minRowFontSize && 
-               doc.widthOfString(rowData[0]) > colWidths[0] - 4) {
-          rowFontSize--;
-        }
-        
+        // Set consistent font size for row data
+        const rowFontSize = 7;
         doc.fontSize(rowFontSize);
 
-        // Draw row cells with wrapping for product name
+        // Draw row cells with proper alignment
+        let maxTextHeight = 0;
         for (let i = 0; i < rowData.length; i++) {
-          const align = i < 3 ? 'left' : 'center';
+          // Determine alignment based on column type
+          const align = i < 3 ? 'left' : (i === 3 ? 'center' : 'right');
+          
+          // Add padding for better readability
+          const cellPadding = 4;
+          let xPosition = colPositions[i];
+          
+          // Adjust position based on alignment
+          if (i < 3) {
+            // Left aligned: add padding from left
+            xPosition += cellPadding;
+          }
+          
           const options = { 
-            width: colWidths[i], 
+            width: colWidths[i] - cellPadding, 
             align,
-            ellipsis: true
+            ellipsis: i === 0 ? false : true // Allow wrapping for description only
           };
           
-          // Add height calculation for product name
+          // For product name, calculate height to adjust row height if needed
           if (i === 0) {
             const textHeight = doc.heightOfString(rowData[i], options);
-            doc.text(rowData[i], colPositions[i], rowY, options);
-            rowY = Math.max(rowY, rowY + textHeight - 12); // Adjust row height if text wraps
-          } else {
-            doc.text(rowData[i], colPositions[i], rowY, options);
+            maxTextHeight = Math.max(maxTextHeight, textHeight);
           }
+          
+          // Draw the text
+          doc.text(rowData[i], xPosition, rowY, options);
         }
-
-        // Horizontal line below row with dynamic spacing
-        doc.moveTo(margin + 15, rowY + 15).lineTo(margin + pageWidth - 15, rowY + 15).stroke();
-        rowY += 20;
+        
+        // Adjust row height if description text wraps
+        const rowHeight = Math.max(15, maxTextHeight);
+        
+        // Horizontal line below row
+        doc.moveTo(tableStartX, rowY + rowHeight).lineTo(tableStartX + tableWidth, rowY + rowHeight).stroke();
+        rowY += rowHeight + 5; // Add 5pt padding between rows
       });
 
-      // Tax table (right aligned, exactly like reference)
-      const taxY = rowY + 15;
-
-      doc.fontSize(8).font('Helvetica').fillColor('#000000');
+      // Tax table (right aligned, with proper spacing)
+      const taxY = rowY + 10;
+      
+      // Position tax table to align with the last columns of the product table
+      const taxLabelX = colPositions[4]; // Align with 'Rate' column
+      const taxValueX = colPositions[6]; // Align with 'Total' column
+      
+      doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
 
       // CGST
-      doc.text('CGST', margin + 370, taxY);
-      doc.text(`₹${cgst.toFixed(2)}`, margin + 450, taxY, { width: 70, align: 'center' });
+      doc.text('CGST', taxLabelX, taxY);
+      doc.fontSize(8).font('Helvetica');
+      doc.text(`₹${cgst.toFixed(2)}`, taxValueX, taxY, { width: colWidths[6] - 4, align: 'right' });
 
-      // SGST (10 pts below)
-      doc.text('SGST', margin + 370, taxY + 20);
-      doc.text(`₹${sgst.toFixed(2)}`, margin + 450, taxY + 20, { width: 70, align: 'center' });
+      // SGST (15 pts below)
+      doc.fontSize(8).font('Helvetica-Bold');
+      doc.text('SGST', taxLabelX, taxY + 15);
+      doc.fontSize(8).font('Helvetica');
+      doc.text(`₹${sgst.toFixed(2)}`, taxValueX, taxY + 15, { width: colWidths[6] - 4, align: 'right' });
 
-      // IGST (10 pts below)
-      doc.text('IGST', margin + 370, taxY + 40);
-      doc.text(igst > 0 ? `₹${igst.toFixed(2)}` : '–', margin + 450, taxY + 40, { width: 70, align: 'center' });
+      // IGST (15 pts below)
+      doc.fontSize(8).font('Helvetica-Bold');
+      doc.text('IGST', taxLabelX, taxY + 30);
+      doc.fontSize(8).font('Helvetica');
+      doc.text(igst > 0 ? `₹${igst.toFixed(2)}` : '₹0.00', taxValueX, taxY + 30, { width: colWidths[6] - 4, align: 'right' });
 
       // Line above Total
-      doc.moveTo(margin + 370, taxY + 60).lineTo(margin + pageWidth - 15, taxY + 60).stroke();
+      doc.moveTo(taxLabelX, taxY + 45).lineTo(taxValueX + colWidths[6], taxY + 45).stroke();
 
       // Total Amount
       doc.fontSize(8).font('Helvetica-Bold');
-      doc.text('Total', margin + 370, taxY + 70);
-      doc.text(`₹${order.totalPrice}`, margin + 450, taxY + 70, { width: 70, align: 'center' });
-
-      doc.text('Total Amount', margin + 300, taxY + 70);
-      doc.text(`₹${order.totalPrice}`, margin + 370, taxY + 70, { align: 'right' });
+      doc.text('Total', taxLabelX, taxY + 50);
+      
+      // Format total price correctly
+      let totalPrice = order.totalPrice;
+      if (typeof totalPrice === 'string') {
+        // If it's a string, try to convert to number
+        totalPrice = parseFloat(totalPrice.replace(/[^\d.-]/g, '')) || 0;
+      }
+      
+      doc.text(`₹${totalPrice.toFixed(2)}`, taxValueX, taxY + 50, { width: colWidths[6] - 4, align: 'right' });
+      
+      // Discount if applicable
+      let discountY = taxY + 65;
+      if (order.coupon?.discountAmount || order.subscriptionDiscount?.amount) {
+        const discount = (order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0);
+        
+        doc.fontSize(8).font('Helvetica-Bold');
+        doc.text('Discount', taxLabelX, discountY);
+        doc.text(`- ₹${discount.toFixed(2)}`, taxValueX, discountY, { width: colWidths[6] - 4, align: 'right' });
+        
+        discountY += 15;
+      }
+      
+      // Grand Total (Bold and slightly larger)
+      doc.moveTo(taxLabelX, discountY).lineTo(taxValueX + colWidths[6], discountY).stroke();
+      
+      doc.fontSize(9).font('Helvetica-Bold');
+      doc.text('Grand Total', taxLabelX, discountY + 10);
+      
+      // Calculate grand total
+      const grandTotal = totalPrice - ((order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0));
+      doc.text(`₹${grandTotal.toFixed(2)}`, taxValueX, discountY + 10, { width: colWidths[6] - 4, align: 'right' });
 
       // Footer with QR codes (exactly matching reference image)
       const footerY = 650;
