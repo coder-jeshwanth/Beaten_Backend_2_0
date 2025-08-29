@@ -602,59 +602,59 @@ const generateInvoicePDF = async (order, shippingAddress) => {
 
       // QR Codes section - Stacked vertically on the left side
       try {
-        // First QR Code (Website)
+        // First QR Code (Website) - smaller size
         const websiteQR = await QRCode.toBuffer('https://beaten.in', {
-          width: 70,
+          width: 50,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(websiteQR, margin + 15, footerY, { width: 70, height: 70 });
+        doc.image(websiteQR, margin + 15, footerY, { width: 50, height: 50 });
 
         // Visit Website button with gray background
-        doc.roundedRect(margin + 15, footerY + 75, 70, 25, 3).fill('#f5f5f5');
-        doc.fontSize(9).font('Helvetica').fillColor('#333333');
-        doc.text('Visit Website', margin + 15, footerY + 80, { width: 70, align: 'center' });
+        doc.roundedRect(margin + 15, footerY + 55, 50, 20, 3).fill('#f5f5f5');
+        doc.fontSize(8).font('Helvetica').fillColor('#333333');
+        doc.text('Visit Website', margin + 15, footerY + 58, { width: 50, align: 'center' });
 
-        // Second QR Code (Social Media) - Stacked below the first one
+        // Second QR Code (Social Media) - Stacked below the first one - smaller size
         const socialQR = await QRCode.toBuffer('https://instagram.com/beaten.official', {
-          width: 70,
+          width: 50,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(socialQR, margin + 15, footerY + 110, { width: 70, height: 70 });
+        doc.image(socialQR, margin + 15, footerY + 85, { width: 50, height: 50 });
 
         // FOLLOW US button with dark background
-        doc.roundedRect(margin + 15, footerY + 185, 70, 25, 3).fill('#333333');
-        doc.fontSize(9).font('Helvetica').fillColor('#ffffff');
-        doc.text('FOLLOW US', margin + 15, footerY + 190, { width: 70, align: 'center' });
+        doc.roundedRect(margin + 15, footerY + 140, 50, 20, 3).fill('#333333');
+        doc.fontSize(8).font('Helvetica').fillColor('#ffffff');
+        doc.text('FOLLOW US', margin + 15, footerY + 143, { width: 50, align: 'center' });
 
       } catch (qrError) {
         console.error('QR Code generation error:', qrError);
       }
 
-      // Thank you message - now below the QR codes with larger font size
-      const contentStartY = footerY + 220; // Start content below the QR codes
+      // Thank you message - moved to the left side
+      const contentStartY = footerY + 170; // Start content after the QR codes
       
       doc.fontSize(14).font(FONTS.italic).fillColor('#000000'); // Increased font size from 11 to 14
-      doc.text('Thank You For shopping with BEATEN', margin + 15, contentStartY, { width: pageWidth - 30, align: 'center' });
+      doc.text('Thank You For shopping with BEATEN', margin + 15, contentStartY, { width: pageWidth - 30, align: 'left' });
 
       // Legal disclaimer with increased font size
       doc.fontSize(9).font('Helvetica').fillColor('#444444'); // Increased font size from 8 to 9
       doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.',
-        margin + 15, contentStartY + 30, { width: pageWidth - 30, align: 'left' });
+        margin + 15, contentStartY + 25, { width: pageWidth - 30, align: 'left' });
       doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.',
-        margin + 15, contentStartY + 50, { width: pageWidth - 30, align: 'left' });
+        margin + 15, contentStartY + 45, { width: pageWidth - 30, align: 'left' });
 
       // Bottom registered office line - adjusted to appear below the content
       doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
-        margin + 15, contentStartY + 80, { width: pageWidth - 30, align: 'center' });
+        margin + 15, contentStartY + 75, { width: pageWidth - 30, align: 'left' });
 
       // Bottom tagline - matching reference exactly - adjusted to appear at the bottom
       doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
-      doc.text('Elevate your look with BEATEN....', margin + 15, contentStartY + 100);
+      doc.text('Elevate your look with BEATEN....', margin + 15, contentStartY + 95);
       doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
-      doc.text('www.beaten.in', margin + pageWidth - 80, contentStartY + 100);
+      doc.text('www.beaten.in', margin + pageWidth - 80, contentStartY + 95);
 
       doc.end();
     } catch (error) {
