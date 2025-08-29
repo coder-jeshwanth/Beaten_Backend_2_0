@@ -590,62 +590,64 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.moveTo(taxLabelX, taxY - 5).lineTo(taxLabelX, discountY + 30).stroke(); // Left border
       doc.moveTo(taxLabelX + gstTableWidth, taxY - 5).lineTo(taxLabelX + gstTableWidth, discountY + 30).stroke(); // Right border
 
-      // Footer with QR codes (exactly matching reference image)
-      const footerY = 650;
+      // Add more space after the grand total table (as requested)
+      
+      // Footer with QR codes (stacked vertically on left side)
+      const footerY = 680; // Move down by 30 points to create more space after grand total
 
-      // QR Codes section
+      // QR Codes section - Stacked vertically on the left side
       try {
-        // Website QR Code
+        // First QR Code (Website)
         const websiteQR = await QRCode.toBuffer('https://beaten.in', {
-          width: 60,
+          width: 70,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(websiteQR, margin + 15, footerY, { width: 60, height: 60 });
+        doc.image(websiteQR, margin + 15, footerY, { width: 70, height: 70 });
 
         // Visit Website button with gray background
-        doc.roundedRect(margin + 15, footerY + 65, 60, 25, 3).fill('#f5f5f5');
+        doc.roundedRect(margin + 15, footerY + 75, 70, 25, 3).fill('#f5f5f5');
         doc.fontSize(9).font('Helvetica').fillColor('#333333');
-        doc.text('Visit Website', margin + 15, footerY + 70, { width: 60, align: 'center' });
+        doc.text('Visit Website', margin + 15, footerY + 80, { width: 70, align: 'center' });
 
-        // Social Media QR Code
+        // Second QR Code (Social Media) - Stacked below the first one
         const socialQR = await QRCode.toBuffer('https://instagram.com/beaten.official', {
-          width: 60,
+          width: 70,
           margin: 1,
           color: { dark: '#000000', light: '#FFFFFF' }
         });
-        doc.image(socialQR, margin + 85, footerY, { width: 60, height: 60 });
+        doc.image(socialQR, margin + 15, footerY + 110, { width: 70, height: 70 });
 
         // FOLLOW US button with dark background
-        doc.roundedRect(margin + 85, footerY + 65, 60, 25, 3).fill('#333333');
+        doc.roundedRect(margin + 15, footerY + 185, 70, 25, 3).fill('#333333');
         doc.fontSize(9).font('Helvetica').fillColor('#ffffff');
-        doc.text('FOLLOW US', margin + 85, footerY + 70, { width: 60, align: 'center' });
+        doc.text('FOLLOW US', margin + 15, footerY + 190, { width: 70, align: 'center' });
 
       } catch (qrError) {
         console.error('QR Code generation error:', qrError);
       }
 
-      // Thank you message - matching reference style
+      // Thank you message - matching reference style - moved to the right side of the QR codes
       doc.fontSize(11).font(FONTS.italic).fillColor('#000000');
-      doc.text('Thank You For shopping with BEATEN', margin + 15, footerY + 110, { width: pageWidth - 30, align: 'left' });
+      doc.text('Thank You For shopping with BEATEN', margin + 100, footerY + 20, { width: pageWidth - 115, align: 'left' });
 
-      // Legal disclaimer (matching reference font and layout)
+      // Legal disclaimer (matching reference font and layout) - moved to the right side
       doc.fontSize(8).font('Helvetica').fillColor('#444444');
       doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.',
-        margin + 15, footerY + 135, { width: pageWidth - 30, align: 'left' });
+        margin + 100, footerY + 45, { width: pageWidth - 115, align: 'left' });
       doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.',
         margin + 15, footerY + 150, { width: pageWidth - 30, align: 'left' });
 
-      // Bottom registered office line
+      // Bottom registered office line - adjusted to fit with the new layout
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
-        margin + 15, footerY + 170, { width: pageWidth - 30, align: 'left' });
+        margin + 100, footerY + 100, { width: pageWidth - 115, align: 'left' });
 
-      // Bottom tagline - matching reference exactly
+      // Bottom tagline - matching reference exactly - adjusted to fit with the new layout
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('Elevate your look with BEATEN....', margin + 15, footerY + 190);
+      doc.text('Elevate your look with BEATEN....', margin + 100, footerY + 125);
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 190);
+      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 125);
 
       doc.end();
     } catch (error) {
