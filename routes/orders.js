@@ -9,6 +9,7 @@ const {
   getMyOrderById,
   cancelOrder,
   deleteSubscriptionByEmail,
+  initiateReturnRequest,
 } = require("../controllers/orderController");
 const { protect, protectAdmin } = require("../middleware/auth");
 
@@ -34,6 +35,9 @@ router.put("/:id/cancel", protect, cancelOrder);
 
 // User: Get order by ID (only their own order)
 router.get("/my/:id", protect, getMyOrderById);
+
+// User: Initiate a return request for an order
+router.post("/:id/return", protect, initiateReturnRequest);
 
 // Admin: Delete subscription by email
 router.delete(

@@ -2843,6 +2843,272 @@ const sendSubscriptionActivationEmail = async (
   }
 };
 
+// Function to notify administrators about a new return request
+const sendAdminReturnNotification = async (data) => {
+  const { orderId, userName, userEmail, reason, returnedItems, refundAmount } = data;
+  
+  try {
+    const transporter = createTransporter();
+    
+    // Construct returned items HTML
+    const itemsHtml = returnedItems && returnedItems.length 
+      ? returnedItems.map(item => `
+          <tr>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.name || 'N/A'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.size || 'N/A'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity || '1'}</td>
+            <td style="padding: 8px; border: 1px solid #ddd;">₹${item.price || '0'}</td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="4" style="padding: 8px; border: 1px solid #ddd;">No items data available</td></tr>';
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            color: #333333;
+            line-height: 1.6;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #eeeeee;
+          }
+          .header {
+            background-color: #f8f8f8;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dddddd;
+          }
+          .content {
+            padding: 15px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+          }
+          th {
+            background-color: #f2f2f2;
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+          }
+          .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff9800;
+            background-color: #fff8e1;
+          }
+          .footer {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eeeeee;
+            font-size: 0.9em;
+            color: #777777;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>⚠️ New Return Request - Action Required</h2>
+          </div>
+          
+          <div class="content">
+            <div class="alert">
+              <p>A new return request has been initiated for Order #${orderId}.</p>
+            </div>
+            
+            <h3>Return Details:</h3>
+            <ul>
+              <li><strong>Customer:</strong> ${userName} (${userEmail})</li>
+              <li><strong>Order ID:</strong> ${orderId}</li>
+              <li><strong>Refund Amount:</strong> ₹${refundAmount}</li>
+              <li><strong>Reason for Return:</strong> ${reason}</li>
+            </ul>
+            
+            <h3>Items Being Returned:</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Size</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+            </table>
+            
+            <p>Please review this return request in the admin panel and take appropriate action.</p>
+          </div>
+          
+          <div class="footer">
+            <p>This is an automated notification from the BEATEN return management system.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"BEATEN Return System" <${process.env.EMAIL_USER || "returns@beaten.in"}>`,
+      to: process.env.ADMIN_ORDER_MAIL || "orders@beaten.in", // Admin email
+      subject: `🔄 New Return Request - Order #${orderId} - ${userName}`,
+      html: htmlContent,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Admin return notification email sent successfully");
+    return true;
+  } catch (error) {
+    console.error("Error sending admin return notification:", error);
+    return false;
+  }
+};
+
+// Function to send return request acknowledgment email to customer
+const sendReturnRequestEmail = async (email, userName, orderId, orderItems, refundAmount, paymentMethod) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Construct order items HTML
+    const orderItemsHtml = orderItems && orderItems.length 
+      ? orderItems.map(item => `
+          <div style="margin-bottom: 10px;">
+            <strong>${item.name}</strong> - Size: ${item.size || 'N/A'}, Quantity: ${item.quantity}
+          </div>
+        `).join('')
+      : '<div>Order details not available</div>';
+    
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            color: #333333;
+            line-height: 1.6;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #eeeeee;
+          }
+          .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eeeeee;
+          }
+          .content {
+            padding: 20px 0;
+          }
+          .highlight {
+            font-weight: bold;
+            color: #000000;
+          }
+          .details-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+          }
+          .required-info {
+            background-color: #f5f5f5;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #000000;
+          }
+          .contact {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eeeeee;
+          }
+          .footer {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555555;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>Return Request Received</h2>
+          </div>
+          
+          <div class="content">
+            <p>Dear ${userName || "Customer"},</p>
+            
+            <p>We have received your return request for Order ID: <strong>${orderId}</strong>.</p>
+            
+            <div class="details-section">
+              <h3>Items Being Returned:</h3>
+              ${orderItemsHtml}
+            </div>
+            
+            ${paymentMethod && paymentMethod.toLowerCase().includes('online') ? `
+              <p>If your payment was made through online mode (UPI, Debit/Credit Card, Net Banking, Wallets, etc.), the refund amount of ₹${refundAmount || '0'} will be credited directly to your original payment source within 5–7 business days.</p>
+            ` : `
+              <p>If your payment was made through Cash on Delivery (COD), we request you to kindly provide the following details for processing your refund:</p>
+              
+              <div class="required-info">
+                <p>Order ID</p>
+                <p>Refund Amount</p>
+                <p>Bank Account Holder Name</p>
+                <p>Bank Account Number</p>
+                <p>IFSC Code</p>
+                <p>UPI ID (for instant credit)</p>
+              </div>
+              
+              <p>Please reply to this email with the above details so that we can initiate your refund securely.</p>
+            `}
+            
+            <p>Once processed, you will receive a confirmation message from our team.</p>
+            
+            <p>Thank you for shopping with BEATEN. We value your trust and look forward to serving you again.</p>
+            
+            <p>Warm regards,<br>Team BEATEN</p>
+            
+            <div class="contact">
+              <p>Email: Support@beaten.in | Ph: +91 7799120325</p>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} BEATEN. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"BEATEN Customer Support" <${process.env.EMAIL_USER || "support@beaten.in"}>`,
+      to: email,
+      subject: `Return Request Received for Order #${orderId}`,
+      html: htmlContent,
+      replyTo: "support@beaten.in"
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log("Return request acknowledgment email sent successfully to:", email);
+    return true;
+  } catch (error) {
+    console.error("Error sending return request email:", error);
+    return false;
+  }
+};
+
 module.exports = {
   generateOTP,
   generateResetToken,
@@ -2853,6 +3119,7 @@ module.exports = {
   sendOrderConfirmedEmail,
   sendReturnPlacedEmail,
   sendReturnStatusEmail,
+  sendReturnRequestEmail, // Added new return request function
   // Admin notification functions
   sendAdminOrderNotification,
   sendAdminRegistrationNotification,

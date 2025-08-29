@@ -768,6 +768,149 @@ const deleteSubscriptionByEmail = async (req, res) => {
   }
 };
 
+// @desc    Initiate a return request for an order
+// @route   POST /api/orders/:id/return
+// @access  Private
+const initiateReturnRequest = async (req, res) => {
+  try {
+    const { reason, items } = req.body;
+    
+    if (!reason || !items || !items.length) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Reason and items to return are required",
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    }).populate("user", "name email").populate("shippingAddress");
+    
+    if (!order) {
+      return res.status(STATUS_CODES.NOT_FOUND).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+    
+    // Validate that the order can be returned
+    // Only delivered orders within a certain timeframe (e.g., 7 days) can be returned
+    if (order.status !== "delivered") {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "Only delivered orders can be returned",
+      });
+    }
+    
+    // Check if the order was delivered within the return window (e.g., 7 days)
+    const deliveryDate = order.deliveredAt || order.updatedAt;
+    const currentDate = new Date();
+    const daysDifference = Math.floor((currentDate - deliveryDate) / (1000 * 60 * 60 * 24));
+    
+    const MAX_RETURN_DAYS = 7;
+    if (daysDifference > MAX_RETURN_DAYS) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: `Return period of ${MAX_RETURN_DAYS} days has expired`,
+      });
+    }
+    
+    // Validate that the items belong to the order
+    const validItems = items.filter(item => {
+      return order.orderItems.some(orderItem => 
+        orderItem._id.toString() === item.itemId.toString()
+      );
+    });
+    
+    if (validItems.length === 0) {
+      return res.status(STATUS_CODES.BAD_REQUEST).json({
+        success: false,
+        message: "No valid items to return",
+      });
+    }
+    
+    // Create return request data
+    const returnRequest = {
+      reason,
+      items: validItems,
+      status: "pending",
+      createdAt: new Date()
+    };
+    
+    // Add return request to the order
+    order.returnRequest = returnRequest;
+    order.status = "return_requested";
+    
+    await order.save();
+    
+    // Calculate refund amount
+    const refundAmount = validItems.reduce((total, item) => {
+      const orderItem = order.orderItems.find(oi => oi._id.toString() === item.itemId.toString());
+      if (orderItem) {
+        return total + (orderItem.price * orderItem.quantity);
+      }
+      return total;
+    }, 0);
+    
+    // Get the ordered items details for the email
+    const returnedItems = validItems.map(item => {
+      const orderItem = order.orderItems.find(oi => oi._id.toString() === item.itemId.toString());
+      return {
+        name: orderItem.name,
+        size: orderItem.size,
+        quantity: orderItem.quantity,
+        price: orderItem.price
+      };
+    });
+    
+    // Get payment method
+    const paymentMethod = order.paymentInfo?.method || 'Unknown';
+    
+    // Send email notification to user
+    if (order.user && order.user.email) {
+      const { sendReturnRequestEmail } = require("../utils/emailService");
+      await sendReturnRequestEmail(
+        order.user.email,
+        order.user.name,
+        order.orderId,
+        returnedItems,
+        refundAmount,
+        paymentMethod
+      );
+    }
+    
+    // Send notification to admin
+    const { sendAdminReturnNotification } = require("../utils/emailService");
+    await sendAdminReturnNotification({
+      orderId: order.orderId,
+      userName: order.user.name,
+      userEmail: order.user.email,
+      reason: reason,
+      returnedItems: returnedItems,
+      refundAmount: refundAmount
+    });
+    
+    res.status(STATUS_CODES.OK).json({
+      success: true,
+      message: "Return request initiated successfully",
+      data: {
+        orderId: order.orderId,
+        returnRequest: returnRequest,
+        refundAmount: refundAmount
+      }
+    });
+    
+  } catch (error) {
+    console.error("Error initiating return request:", error);
+    res.status(STATUS_CODES.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: error.message || "Failed to initiate return request",
+    });
+  }
+};
+
 module.exports = {
   createOrder,
   getMyOrders,
@@ -777,4 +920,5 @@ module.exports = {
   getMyOrderById,
   cancelOrder,
   deleteSubscriptionByEmail,
+  initiateReturnRequest,
 };
