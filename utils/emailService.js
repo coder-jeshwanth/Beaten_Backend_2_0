@@ -14,7 +14,27 @@ const generateInvoicePDF = async (order, shippingAddress) => {
 
       // Calculate totals and taxes
       const subtotal = order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const totalGST = order.orderItems.reduce((sum, item) => sum + (item.gst * item.quantity), 0);
+      
+      /* 
+      * Calculate GST based on the provided formula: 
+      * GST = (Rate × Qty × GST%)
+      * For items with price ≥ 999, GST is 12%
+      * The GST is then split into CGST & SGST (each half of GST)
+      * Final Total = Item Price + CGST + SGST
+      */
+      let totalGST = 0;
+      order.orderItems.forEach(item => {
+        const price = parseFloat(item.price) || 0;
+        const gst = parseFloat(item.gst) || 0;
+        const quantity = parseInt(item.quantity) || 0;
+        
+        // Calculate GST percentage and amount
+        const gstPercentage = (gst / price) * 100; // Get GST percentage
+        const itemGSTAmount = (price * quantity * gstPercentage / 100);
+        
+        totalGST += itemGSTAmount;
+      });
+      
       const discountAmount = order.coupon?.discountAmount || 0;
       const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
       const totalDiscount = discountAmount + subscriptionDiscount;
@@ -32,6 +52,9 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         autoFirstPage: true,
         bufferPages: true
       });
+      
+      // Define Rupee symbol as a variable to ensure consistent display
+      const rupeeSymbol = '₹';
       
       const chunks = [];
 
@@ -297,8 +320,16 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         const gst = parseFloat(item.gst) || 0;
         const quantity = parseInt(item.quantity) || 0;
         
-        // Calculate values for display
-        const itemAmount = gst * quantity;
+        // Calculate GST amount as per provided calculation method (Rate × Qty × GST%)
+        const gstPercentage = (gst / price) * 100; // Calculate GST percentage
+        const itemGSTAmount = (price * quantity * gstPercentage / 100); // GST amount calculation
+        
+        // Split GST into CGST & SGST (for display purposes)
+        const itemCGST = isInterState ? 0 : itemGSTAmount / 2;
+        const itemSGST = isInterState ? 0 : itemGSTAmount / 2;
+        const itemIGST = isInterState ? itemGSTAmount : 0;
+        
+        const itemAmount = itemGSTAmount; // For backward compatibility
         const itemTotal = price * quantity + itemAmount;
         
         // Get HSN code with fallback
@@ -310,9 +341,9 @@ const generateInvoicePDF = async (order, shippingAddress) => {
           item.sku || item.productSku || 'BT-001',
           hsnCode,
           quantity.toString(),
-          `₹${price.toFixed(2)}`,
-          `₹${itemAmount.toFixed(2)}`,
-          `₹${itemTotal.toFixed(2)}`
+          `${rupeeSymbol}${price.toFixed(2)}`,
+          `${rupeeSymbol}${itemAmount.toFixed(2)}`,
+          `${rupeeSymbol}${itemTotal.toFixed(2)}`
         ];
 
         // Set consistent font size for row data
@@ -389,31 +420,48 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const taxLabelX = colPositions[4]; // Align with 'Rate' column
       const taxValueX = colPositions[6]; // Align with 'Total' column
       
+      // Create a border around the GST details and total section
+      const gstTableWidth = (taxValueX + colWidths[6]) - taxLabelX;
+      
+      // Draw the border around GST details table
+      doc.lineWidth(0.5);
+      doc.rect(taxLabelX, taxY - 5, gstTableWidth, 0).stroke(); // Top border
+      doc.rect(taxLabelX, taxY - 5, 0, 0).stroke(); // Left border
+      doc.rect(taxLabelX + gstTableWidth, taxY - 5, 0, 0).stroke(); // Right border
+      
       doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
 
       // CGST
-      doc.text('CGST', taxLabelX, taxY);
+      doc.text('CGST', taxLabelX + 5, taxY);
       doc.fontSize(8).font('Helvetica');
-      doc.text(`₹${cgst.toFixed(2)}`, taxValueX, taxY, { width: colWidths[6] - 4, align: 'right' });
+      doc.text(`${rupeeSymbol}${cgst.toFixed(2)}`, taxValueX - 5, taxY, { width: colWidths[6], align: 'right' });
+
+      // Draw horizontal line after CGST
+      doc.moveTo(taxLabelX, taxY + 10).lineTo(taxLabelX + gstTableWidth, taxY + 10).stroke();
 
       // SGST (15 pts below)
       doc.fontSize(8).font('Helvetica-Bold');
-      doc.text('SGST', taxLabelX, taxY + 15);
+      doc.text('SGST', taxLabelX + 5, taxY + 15);
       doc.fontSize(8).font('Helvetica');
-      doc.text(`₹${sgst.toFixed(2)}`, taxValueX, taxY + 15, { width: colWidths[6] - 4, align: 'right' });
+      doc.text(`${rupeeSymbol}${sgst.toFixed(2)}`, taxValueX - 5, taxY + 15, { width: colWidths[6], align: 'right' });
+
+      // Draw horizontal line after SGST
+      doc.moveTo(taxLabelX, taxY + 25).lineTo(taxLabelX + gstTableWidth, taxY + 25).stroke();
 
       // IGST (15 pts below)
       doc.fontSize(8).font('Helvetica-Bold');
-      doc.text('IGST', taxLabelX, taxY + 30);
+      doc.text('IGST', taxLabelX + 5, taxY + 30);
       doc.fontSize(8).font('Helvetica');
-      doc.text(igst > 0 ? `₹${igst.toFixed(2)}` : '₹0.00', taxValueX, taxY + 30, { width: colWidths[6] - 4, align: 'right' });
+      doc.text(igst > 0 ? `${rupeeSymbol}${igst.toFixed(2)}` : `${rupeeSymbol}0.00`, taxValueX - 5, taxY + 30, { width: colWidths[6], align: 'right' });
 
-      // Line above Total
-      doc.moveTo(taxLabelX, taxY + 45).lineTo(taxValueX + colWidths[6], taxY + 45).stroke();
+      // Line above Total (thicker line)
+      doc.lineWidth(0.75);
+      doc.moveTo(taxLabelX, taxY + 45).lineTo(taxLabelX + gstTableWidth, taxY + 45).stroke();
+      doc.lineWidth(0.5);
 
       // Total Amount
       doc.fontSize(8).font('Helvetica-Bold');
-      doc.text('Total', taxLabelX, taxY + 50);
+      doc.text('Total', taxLabelX + 5, taxY + 50);
       
       // Format total price correctly
       let totalPrice = order.totalPrice;
@@ -422,7 +470,10 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         totalPrice = parseFloat(totalPrice.replace(/[^\d.-]/g, '')) || 0;
       }
       
-      doc.text(`₹${totalPrice.toFixed(2)}`, taxValueX, taxY + 50, { width: colWidths[6] - 4, align: 'right' });
+      doc.text(`${rupeeSymbol}${totalPrice.toFixed(2)}`, taxValueX - 5, taxY + 50, { width: colWidths[6], align: 'right' });
+      
+      // Draw horizontal line after Total
+      doc.moveTo(taxLabelX, taxY + 60).lineTo(taxLabelX + gstTableWidth, taxY + 60).stroke();
       
       // Discount if applicable
       let discountY = taxY + 65;
@@ -430,21 +481,33 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         const discount = (order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0);
         
         doc.fontSize(8).font('Helvetica-Bold');
-        doc.text('Discount', taxLabelX, discountY);
-        doc.text(`- ₹${discount.toFixed(2)}`, taxValueX, discountY, { width: colWidths[6] - 4, align: 'right' });
+        doc.text('Discount', taxLabelX + 5, discountY);
+        doc.text(`- ${rupeeSymbol}${discount.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
         
         discountY += 15;
+        
+        // Draw horizontal line after Discount
+        doc.moveTo(taxLabelX, discountY - 5).lineTo(taxLabelX + gstTableWidth, discountY - 5).stroke();
       }
       
       // Grand Total (Bold and slightly larger)
-      doc.moveTo(taxLabelX, discountY).lineTo(taxValueX + colWidths[6], discountY).stroke();
+      doc.lineWidth(0.75);
+      doc.moveTo(taxLabelX, discountY).lineTo(taxLabelX + gstTableWidth, discountY).stroke();
+      doc.lineWidth(0.5);
       
       doc.fontSize(9).font('Helvetica-Bold');
-      doc.text('Grand Total', taxLabelX, discountY + 10);
+      doc.text('Grand Total', taxLabelX + 5, discountY + 10);
       
       // Calculate grand total
       const grandTotal = totalPrice - ((order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0));
-      doc.text(`₹${grandTotal.toFixed(2)}`, taxValueX, discountY + 10, { width: colWidths[6] - 4, align: 'right' });
+      doc.text(`${rupeeSymbol}${grandTotal.toFixed(2)}`, taxValueX - 5, discountY + 10, { width: colWidths[6], align: 'right' });
+      
+      // Draw bottom border of the GST table
+      doc.moveTo(taxLabelX, discountY + 25).lineTo(taxLabelX + gstTableWidth, discountY + 25).stroke();
+      
+      // Draw vertical lines for GST table
+      doc.moveTo(taxLabelX, taxY - 5).lineTo(taxLabelX, discountY + 25).stroke(); // Left border
+      doc.moveTo(taxLabelX + gstTableWidth, taxY - 5).lineTo(taxLabelX + gstTableWidth, discountY + 25).stroke(); // Right border
 
       // Footer with QR codes (exactly matching reference image)
       const footerY = 650;
