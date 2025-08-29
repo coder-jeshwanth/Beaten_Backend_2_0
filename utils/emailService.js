@@ -177,25 +177,48 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Horizontal line after recipient address
       doc.moveTo(margin, margin + 205).lineTo(margin + pageWidth, margin + 205).stroke();
       
-      // ORDER NUMBER & PAYMENT INFO
-      doc.fontSize(8).font('Helvetica-Bold').fillColor('#000000');
-      doc.text('ORDER NUMBER:', margin + 15, margin + 220);
-      doc.text(`${order.orderId || ''}`, margin + 90, margin + 220);
+      // Add some space after the recipient section
+      const orderInfoY = margin + 225;
+      
+      // ORDER NUMBER & CARRIER NAME (left side)
+      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      doc.text('Order Number:', margin + 15, orderInfoY);
+      doc.fontSize(9).font('Helvetica');
+      doc.text(`${order.orderId || ''}`, margin + 85, orderInfoY);
+      
+      doc.fontSize(9).font('Helvetica-Bold');
+      doc.text('Carrier Name:', margin + 15, orderInfoY + 15);
+      doc.fontSize(9).font('Helvetica');
+      doc.text('DELHIVERY', margin + 85, orderInfoY + 15);
+      
+      // MODE OF PAYMENT & AWB NUMBER (right side)
+      doc.fontSize(9).font('Helvetica-Bold');
+      // Calculate right side starting position
+      const rightSideX = margin + 270;
+      
+      doc.text('Mode Of Payment:', rightSideX, orderInfoY);
+      doc.fontSize(9).font('Helvetica');
+      // Get payment method from order
+      const paymentMethod = order.paymentInfo?.method || '';
+      // Format the payment method for better readability
+      let displayPaymentMethod = paymentMethod;
+      if (paymentMethod === 'COD') {
+        displayPaymentMethod = 'Cash On Delivery';
+      } else if (paymentMethod === 'PREPAID' || paymentMethod === 'ONLINE') {
+        displayPaymentMethod = 'Prepaid';
+      }
+      doc.text(displayPaymentMethod, rightSideX + 95, orderInfoY);
+      
+      doc.fontSize(9).font('Helvetica-Bold');
+      doc.text('AWB Number:', rightSideX, orderInfoY + 15);
+      doc.fontSize(9).font('Helvetica');
+      doc.text('195042195657972', rightSideX + 95, orderInfoY + 15);
 
-      doc.text('Mode Of Payment:', margin + 180, margin + 220);
-      doc.text(`${order.paymentInfo?.method === 'COD' ? 'NONCOD' : 'NONCOD'}`, margin + 255, margin + 220);
-
-      doc.text('AWB Number:', margin + 320, margin + 220);
-      doc.text(`${order.awbNumber || ''}`, margin + 380, margin + 220);
-
-      doc.fontSize(8).font('Helvetica').fillColor('#555555');
-      doc.text('Carrier Name: DELHIVERY', margin + 15, margin + 232);
-
-      // Horizontal line
-      doc.moveTo(margin, margin + 245).lineTo(margin + pageWidth, margin + 245).stroke();
+      // Horizontal line after order information
+      doc.moveTo(margin, margin + 255).lineTo(margin + pageWidth, margin + 255).stroke();
 
       // PRODUCT TABLE
-      const tableY = margin + 255;
+      const tableY = margin + 265;
 
       // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
