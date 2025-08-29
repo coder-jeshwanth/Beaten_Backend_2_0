@@ -632,27 +632,29 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         console.error('QR Code generation error:', qrError);
       }
 
-      // Thank you message - matching reference style - moved to the right side of the QR codes
-      doc.fontSize(11).font(FONTS.italic).fillColor('#000000');
-      doc.text('Thank You For shopping with BEATEN', margin + 100, footerY + 10, { width: pageWidth - 115, align: 'left' });
+      // Thank you message - now below the QR codes with larger font size
+      const contentStartY = footerY + 220; // Start content below the QR codes
+      
+      doc.fontSize(14).font(FONTS.italic).fillColor('#000000'); // Increased font size from 11 to 14
+      doc.text('Thank You For shopping with BEATEN', margin + 15, contentStartY, { width: pageWidth - 30, align: 'center' });
 
-      // Legal disclaimer (matching reference font and layout) - moved to the right side
-      doc.fontSize(8).font('Helvetica').fillColor('#444444');
+      // Legal disclaimer with increased font size
+      doc.fontSize(9).font('Helvetica').fillColor('#444444'); // Increased font size from 8 to 9
       doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.',
-        margin + 100, footerY + 35, { width: pageWidth - 115, align: 'left' });
+        margin + 15, contentStartY + 30, { width: pageWidth - 30, align: 'left' });
       doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.',
-        margin + 15, footerY + 150, { width: pageWidth - 30, align: 'left' });
+        margin + 15, contentStartY + 50, { width: pageWidth - 30, align: 'left' });
 
-      // Bottom registered office line - adjusted to fit with the new layout
-      doc.fontSize(8).font('Helvetica').fillColor('#666666');
+      // Bottom registered office line - adjusted to appear below the content
+      doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
-        margin + 100, footerY + 90, { width: pageWidth - 115, align: 'left' });
+        margin + 15, contentStartY + 80, { width: pageWidth - 30, align: 'center' });
 
-      // Bottom tagline - matching reference exactly - adjusted to fit with the new layout
-      doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('Elevate your look with BEATEN....', margin + 100, footerY + 110);
-      doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 110);
+      // Bottom tagline - matching reference exactly - adjusted to appear at the bottom
+      doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
+      doc.text('Elevate your look with BEATEN....', margin + 15, contentStartY + 100);
+      doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
+      doc.text('www.beaten.in', margin + pageWidth - 80, contentStartY + 100);
 
       doc.end();
     } catch (error) {
