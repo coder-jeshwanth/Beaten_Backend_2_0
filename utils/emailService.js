@@ -546,30 +546,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         
         // Draw horizontal line after Discount
         doc.moveTo(taxLabelX, discountY - 5).lineTo(taxLabelX + gstTableWidth, discountY - 5).stroke();
-        
-        // Add Pre-tax information (for reference)
-        doc.fontSize(8).font('Helvetica');
-        doc.text('Pre-tax Value', taxLabelX + 5, discountY);
-        doc.text(`${rupeeSymbol}${preTaxCatalogValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
-        
-        discountY += 15;
-        
-        // Add Pre-tax Discount information
-        doc.text('Pre-tax Discount', taxLabelX + 5, discountY);
-        doc.text(`${rupeeSymbol}${preTaxDiscountValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
-        
-        discountY += 15;
-        
-        // Add Taxable Value information
-        doc.text('Taxable Value', taxLabelX + 5, discountY);
-        doc.text(`${rupeeSymbol}${taxableValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
-        
-        discountY += 15;
       }
-      
-      // Add note about GST calculation method
-      doc.fontSize(7).font(FONTS.italic); // Use our font constant
-      doc.text('Note: Prices are GST-inclusive', taxLabelX + 5, discountY - 5);
       
       // Grand Total (Bold and slightly larger)
       doc.lineWidth(0.75);
