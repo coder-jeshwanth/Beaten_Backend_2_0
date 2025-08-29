@@ -473,13 +473,40 @@ const updateOrderStatus = async (req, res) => {
           .populate("user", "name email")
           .populate("shippingAddress");
         
-        await sendOrderStatusEmail(
-          order.user.email,
-          status,
-          order.orderId,
-          order.user.name,
-          fullOrder
-        );
+        // Make sure we have the properly populated order data
+        if (fullOrder && fullOrder.shippingAddress) {
+          // Map the Address model fields to the expected shippingAddress structure
+          const mappedShippingAddress = {
+            addressLine1: fullOrder.shippingAddress.address,
+            city: fullOrder.shippingAddress.city,
+            state: fullOrder.shippingAddress.state,
+            pincode: fullOrder.shippingAddress.postalCode,
+            phoneNumber: fullOrder.shippingAddress.phone,
+            name: fullOrder.shippingAddress.name || fullOrder.user.name
+          };
+          
+          // Create a copy of the order with the mapped shipping address
+          const orderWithMappedAddress = {
+            ...fullOrder.toObject(),
+            shippingAddress: mappedShippingAddress
+          };
+          
+          await sendOrderStatusEmail(
+            order.user.email,
+            status,
+            order.orderId,
+            order.user.name,
+            orderWithMappedAddress
+          );
+        } else {
+          console.error("Failed to populate shipping address for order:", order.orderId);
+          await sendOrderStatusEmail(
+            order.user.email,
+            status,
+            order.orderId,
+            order.user.name
+          );
+        }
       } else {
         await sendOrderStatusEmail(
           order.user.email,
