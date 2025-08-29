@@ -5,6 +5,13 @@ const path = require("path");
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 
+// Define standard fonts available in PDFKit
+const FONTS = {
+  normal: 'Helvetica',
+  bold: 'Helvetica-Bold',
+  italic: 'Helvetica'  // Using regular Helvetica as fallback
+};
+
 // Generate Invoice PDF
 const generateInvoicePDF = async (order, shippingAddress) => {
   return new Promise(async (resolve, reject) => {
@@ -75,12 +82,38 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       
       const chunks = [];
 
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        console.log('PDF generation complete, buffer type:', typeof buffer, 'isBuffer:', Buffer.isBuffer(buffer), 'size:', buffer.length);
-        resolve(buffer);
+      // Use a write stream to memory
+      doc.on('data', chunk => {
+        console.log(`PDF chunk received, size: ${chunk.length}`);
+        chunks.push(chunk);
       });
+      
+      doc.on('end', () => {
+        // Ensure we have chunks to concatenate
+        if (chunks.length === 0) {
+          console.error('No PDF data chunks were generated');
+          resolve(Buffer.from('PDF Generation Failed', 'utf-8')); // Send a fallback buffer
+          return;
+        }
+        
+        try {
+          const buffer = Buffer.concat(chunks);
+          console.log('PDF generation complete, buffer type:', typeof buffer, 'isBuffer:', Buffer.isBuffer(buffer), 'size:', buffer.length);
+          
+          // Verify the buffer has content
+          if (buffer.length === 0) {
+            console.error('Generated PDF buffer is empty');
+            resolve(Buffer.from('Empty PDF Generated', 'utf-8')); // Send a fallback buffer
+            return;
+          }
+          
+          resolve(buffer);
+        } catch (bufferError) {
+          console.error('Error creating PDF buffer:', bufferError);
+          reject(bufferError);
+        }
+      });
+      
       doc.on('error', err => {
         console.error('PDF generation error:', err);
         reject(err);
@@ -100,11 +133,11 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Create a single line for left, center, right aligned content
       
       // Left side - Seller/Consignor details
-      doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
+      doc.fontSize(9).font(FONTS.bold).fillColor('#000000');
       doc.text('Seller/Consignor: Beaten apparels', margin + 15, margin + 15);
       
       // Center - TAX INVOICE
-      doc.fontSize(14).font('Helvetica-Bold').fillColor('#000000');
+      doc.fontSize(14).font(FONTS.bold).fillColor('#000000');
       const taxInvoiceWidth = doc.widthOfString('TAX INVOICE');
       doc.text('TAX INVOICE', margin + (pageWidth - taxInvoiceWidth) / 2, margin + 15);
       
@@ -535,7 +568,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       }
       
       // Add note about GST calculation method
-      doc.fontSize(7).font('Helvetica-Italic');
+      doc.fontSize(7).font(FONTS.italic); // Use our font constant
       doc.text('Note: Prices are GST-inclusive', taxLabelX + 5, discountY - 5);
       
       // Grand Total (Bold and slightly larger)
@@ -593,7 +626,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       }
 
       // Thank you message - matching reference style
-      doc.fontSize(11).font('Helvetica-Oblique').fillColor('#000000');
+      doc.fontSize(11).font(FONTS.italic).fillColor('#000000');
       doc.text('Thank You For shopping with BEATEN', margin + 15, footerY + 110, { width: pageWidth - 30, align: 'left' });
 
       // Legal disclaimer (matching reference font and layout)
@@ -609,7 +642,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         margin + 15, footerY + 170, { width: pageWidth - 30, align: 'left' });
 
       // Bottom tagline - matching reference exactly
-      doc.fontSize(8).font('Helvetica-Oblique').fillColor('#666666');
+      doc.fontSize(8).font('Helvetica').fillColor('#666666');
       doc.text('Elevate your look with BEATEN....', margin + 15, footerY + 190);
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
       doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 190);
@@ -1004,6 +1037,13 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS, // use your new password here
     },
+    // Add maximal size for attachments (10MB)
+    attachments: {
+      maxFileSize: 10 * 1024 * 1024
+    },
+    // Debug options
+    debug: true, // Show debug output
+    logger: true // Log information about the mail
   });
 };
 
@@ -1475,23 +1515,51 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
               length: orderData.orderItems?.length
             }, null, 2));
           } else {
-            // Generate PDF invoice - use a direct reference to the mapped shipping address
-            const pdfBuffer = await generateInvoicePDF(orderData, orderData.shippingAddress);
-            
-            if (!pdfBuffer) {
-              console.error('PDF generation returned null or undefined buffer');
-            } else {
-              console.log('PDF buffer generated successfully, size:', pdfBuffer.length);
+            try {
+              // First try with buffer method
+              const pdfBuffer = await generateInvoicePDF(orderData, orderData.shippingAddress);
+              
+              if (!pdfBuffer) {
+                console.error('PDF generation returned null or undefined buffer');
+              } else {
+                console.log('PDF buffer generated successfully, size:', pdfBuffer.length);
 
-              // Attach the PDF to the email with explicit buffer conversion
-              mailOptions.attachments = [
-                {
-                  filename: `Invoice_${orderData.invoiceId || orderId}.pdf`,
-                  content: Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer),
-                  contentType: 'application/pdf'
+                // Create a temporary file path for the PDF
+                const tempFilePath = path.join(__dirname, `../temp_invoices/invoice_${orderId}_${Date.now()}.pdf`);
+                
+                // Create the directory if it doesn't exist
+                const dir = path.dirname(tempFilePath);
+                if (!fs.existsSync(dir)) {
+                  fs.mkdirSync(dir, { recursive: true });
                 }
-              ];
-              console.log('PDF attachment added to email');
+                
+                // Write the buffer to a file
+                fs.writeFileSync(tempFilePath, pdfBuffer);
+                console.log('PDF written to temporary file:', tempFilePath);
+                
+                // Attach the file to the email
+                mailOptions.attachments = [
+                  {
+                    filename: `Invoice_${orderData.invoiceId || orderId}.pdf`,
+                    path: tempFilePath
+                  }
+                ];
+                console.log('PDF attachment added to email from file');
+                
+                // Schedule file cleanup after email is sent (wait 1 minute)
+                setTimeout(() => {
+                  try {
+                    if (fs.existsSync(tempFilePath)) {
+                      fs.unlinkSync(tempFilePath);
+                      console.log('Temporary PDF file deleted:', tempFilePath);
+                    }
+                  } catch (cleanupErr) {
+                    console.error('Error cleaning up temporary PDF file:', cleanupErr);
+                  }
+                }, 60000);
+              }
+            } catch (pdfError) {
+              console.error('Error in PDF handling process:', pdfError);
             }
           }
         } catch (invoiceError) {
@@ -1502,11 +1570,38 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
       }
     }
 
+    console.log("Attempting to send email with options:", {
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      hasAttachments: !!mailOptions.attachments
+    });
+    
+    // Send the email with more detailed logging
     const info = await transporter.sendMail(mailOptions);
-    console.log("Order status email sent:", info.messageId);
+    
+    console.log("Order status email sent:", {
+      messageId: info.messageId,
+      response: info.response,
+      accepted: info.accepted,
+      rejected: info.rejected
+    });
+    
+    // Check if the email was actually sent and accepted
+    if (info.rejected && info.rejected.length > 0) {
+      console.error("Email was rejected for recipients:", info.rejected);
+      return false;
+    }
+    
     return true;
   } catch (error) {
     console.error("Error sending order status email:", error);
+    // Log more details about the error
+    if (error.code) {
+      console.error(`Error code: ${error.code}, command: ${error.command}`);
+    }
+    if (error.response) {
+      console.error(`SMTP Response: ${error.response}`);
+    }
     return false;
   }
 };
@@ -2744,4 +2839,6 @@ module.exports = {
   sendSubscriptionReminderEmail,
   sendCustomMessageEmail,
   sendSubscriptionActivationEmail,
+  // PDF generation
+  generateInvoicePDF
 };
