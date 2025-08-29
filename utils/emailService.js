@@ -117,21 +117,62 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       // Start address details on the next line
       let addressY = margin + 140;
       
-      if (shippingAddress.addressLine1) {
-        doc.text('Plot NO ' + shippingAddress.addressLine1, margin + 15, addressY);
+      // Get complete address details from either shippingAddress or order's address collection
+      let addressLine1 = '';
+      let addressLine2 = '';
+      let city = '';
+      let state = '';
+      let pincode = '';
+      let phoneNumber = '';
+      
+      // First try to get from shippingAddress directly
+      if (shippingAddress) {
+        addressLine1 = shippingAddress.addressLine1 || shippingAddress.address || '';
+        addressLine2 = shippingAddress.addressLine2 || shippingAddress.landmark || '';
+        city = shippingAddress.city || '';
+        state = shippingAddress.state || '';
+        pincode = shippingAddress.pincode || shippingAddress.postalCode || shippingAddress.zip || '';
+        phoneNumber = shippingAddress.phoneNumber || shippingAddress.phone || shippingAddress.mobile || '';
+      }
+      
+      // If not available in shippingAddress, try to get from order's user address collection
+      if ((!addressLine1 || !city || !state || !pincode) && order.user && order.user.addresses && order.user.addresses.length > 0) {
+        // Find the shipping address in the user's address collection
+        const userAddress = order.user.addresses.find(addr => 
+          addr.isDefault || addr._id.toString() === (order.shippingAddressId || '').toString()
+        ) || order.user.addresses[0];
+        
+        // Use address from user's collection if found
+        if (userAddress) {
+          addressLine1 = addressLine1 || userAddress.addressLine1 || userAddress.address || '';
+          addressLine2 = addressLine2 || userAddress.addressLine2 || userAddress.landmark || '';
+          city = city || userAddress.city || '';
+          state = state || userAddress.state || '';
+          pincode = pincode || userAddress.pincode || userAddress.postalCode || userAddress.zip || '';
+          phoneNumber = phoneNumber || userAddress.phoneNumber || userAddress.phone || userAddress.mobile || '';
+        }
+      }
+      
+      // Display full address
+      if (addressLine1) {
+        // Don't add "Plot NO" prefix if addressLine1 might already contain it
+        const line1Text = addressLine1.toLowerCase().includes('plot') ? addressLine1 : 'Plot NO ' + addressLine1;
+        doc.text(line1Text, margin + 15, addressY);
         addressY += 12;
       }
 
-      if (shippingAddress.addressLine2) {
-        doc.text('Road NO ' + shippingAddress.addressLine2, margin + 15, addressY);
+      if (addressLine2) {
+        // Don't add "Road NO" prefix if addressLine2 might already contain it
+        const line2Text = addressLine2.toLowerCase().includes('road') ? addressLine2 : 'Road NO ' + addressLine2;
+        doc.text(line2Text, margin + 15, addressY);
         addressY += 12;
       }
 
-      doc.text(`${shippingAddress.city || ''}, ${shippingAddress.state || ''}`, margin + 15, addressY);
+      doc.text(`${city || ''}, ${state || ''}`, margin + 15, addressY);
       addressY += 12;
-      doc.text(`Pin: ${shippingAddress.pincode || ''}`, margin + 15, addressY);
+      doc.text(`Pin: ${pincode || ''}`, margin + 15, addressY);
       addressY += 12;
-      doc.text(`Mobile NO: ${shippingAddress.phoneNumber || ''}`, margin + 15, addressY);
+      doc.text(`Mobile NO: ${phoneNumber || ''}`, margin + 15, addressY);
       
       // Horizontal line after recipient address
       doc.moveTo(margin, margin + 205).lineTo(margin + pageWidth, margin + 205).stroke();
