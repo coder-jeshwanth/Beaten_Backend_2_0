@@ -468,27 +468,57 @@ const updateOrderStatus = async (req, res) => {
     // Send email notification to user
     if (order.user && order.user.email) {
       if (status === 'delivered') {
+        console.log(`Preparing to send delivery email with invoice for order: ${order.orderId}`);
+        
         // For delivered orders, include full order data for invoice generation
         const fullOrder = await Order.findById(req.params.id)
           .populate("user", "name email")
-          .populate("shippingAddress");
+          .populate("shippingAddress")
+          .populate({
+            path: "orderItems.product",
+            select: "name price description"
+          });
+        
+        console.log('Full order populated:', fullOrder ? 'Yes' : 'No');
+        console.log('Shipping address populated:', fullOrder?.shippingAddress ? 'Yes' : 'No');
         
         // Make sure we have the properly populated order data
         if (fullOrder && fullOrder.shippingAddress) {
+          console.log('Shipping address from DB:', JSON.stringify(fullOrder.shippingAddress, null, 2));
+          
           // Map the Address model fields to the expected shippingAddress structure
           const mappedShippingAddress = {
             addressLine1: fullOrder.shippingAddress.address,
+            address: fullOrder.shippingAddress.address, // Include both formats
+            addressLine2: fullOrder.shippingAddress.landmark || '',
+            landmark: fullOrder.shippingAddress.landmark || '',
             city: fullOrder.shippingAddress.city,
             state: fullOrder.shippingAddress.state,
+            country: fullOrder.shippingAddress.country || 'India',
             pincode: fullOrder.shippingAddress.postalCode,
+            postalCode: fullOrder.shippingAddress.postalCode, // Include both formats
+            zip: fullOrder.shippingAddress.postalCode, // Include all possible formats
             phoneNumber: fullOrder.shippingAddress.phone,
+            phone: fullOrder.shippingAddress.phone, // Include both formats
+            mobile: fullOrder.shippingAddress.phone, // Include all possible formats
             name: fullOrder.shippingAddress.name || fullOrder.user.name
           };
           
+          console.log('Mapped shipping address:', JSON.stringify(mappedShippingAddress, null, 2));
+          
           // Create a copy of the order with the mapped shipping address
+          // Make sure to explicitly include all needed fields for the PDF generation
           const orderWithMappedAddress = {
             ...fullOrder.toObject(),
-            shippingAddress: mappedShippingAddress
+            shippingAddress: mappedShippingAddress,
+            // Ensure these specific fields are included for the invoice
+            orderId: fullOrder.orderId,
+            invoiceId: fullOrder.invoiceId,
+            createdAt: fullOrder.createdAt,
+            orderItems: fullOrder.orderItems,
+            totalPrice: fullOrder.totalPrice,
+            coupon: fullOrder.coupon,
+            subscriptionDiscount: fullOrder.subscriptionDiscount
           };
           
           await sendOrderStatusEmail(

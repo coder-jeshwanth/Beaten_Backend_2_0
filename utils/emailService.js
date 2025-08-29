@@ -76,8 +76,15 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const chunks = [];
 
       doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', err => reject(err));
+      doc.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        console.log('PDF generation complete, buffer type:', typeof buffer, 'isBuffer:', Buffer.isBuffer(buffer), 'size:', buffer.length);
+        resolve(buffer);
+      });
+      doc.on('error', err => {
+        console.error('PDF generation error:', err);
+        reject(err);
+      });
 
       // Page dimensions matching reference invoice
       const pageWidth = 535; // A4 width minus margins
@@ -1447,23 +1454,51 @@ const sendOrderStatusEmail = async (email, status, orderId, userName, orderData 
     };
 
     // If status is delivered and order data is provided, attach invoice as PDF
-    if (status === 'delivered' && orderData && orderData.shippingAddress) {
-      try {
-        // Generate PDF invoice
-        const pdfBuffer = await generateInvoicePDF(orderData, orderData.shippingAddress);
+    if (status === 'delivered') {
+      console.log('Attempting to attach PDF invoice to email for order:', orderId);
+      
+      if (!orderData) {
+        console.error('Cannot generate invoice: orderData is missing');
+      } else if (!orderData.shippingAddress) {
+        console.error('Cannot generate invoice: shippingAddress is missing in orderData');
+        console.log('orderData structure:', JSON.stringify(orderData, null, 2));
+      } else {
+        try {
+          console.log('Generating PDF invoice with shipping address:', JSON.stringify(orderData.shippingAddress, null, 2));
+          
+          // Check if orderItems are present
+          if (!orderData.orderItems || !Array.isArray(orderData.orderItems) || orderData.orderItems.length === 0) {
+            console.error('Cannot generate invoice: orderItems are missing or empty');
+            console.log('orderData structure:', JSON.stringify({
+              hasOrderItems: !!orderData.orderItems,
+              isArray: Array.isArray(orderData.orderItems),
+              length: orderData.orderItems?.length
+            }, null, 2));
+          } else {
+            // Generate PDF invoice - use a direct reference to the mapped shipping address
+            const pdfBuffer = await generateInvoicePDF(orderData, orderData.shippingAddress);
+            
+            if (!pdfBuffer) {
+              console.error('PDF generation returned null or undefined buffer');
+            } else {
+              console.log('PDF buffer generated successfully, size:', pdfBuffer.length);
 
-        // Attach the PDF to the email
-        mailOptions.attachments = [
-          {
-            filename: `Invoice_${orderData.invoiceId || orderId}.pdf`,
-            content: pdfBuffer,
-            contentType: 'application/pdf'
+              // Attach the PDF to the email with explicit buffer conversion
+              mailOptions.attachments = [
+                {
+                  filename: `Invoice_${orderData.invoiceId || orderId}.pdf`,
+                  content: Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer),
+                  contentType: 'application/pdf'
+                }
+              ];
+              console.log('PDF attachment added to email');
+            }
           }
-        ];
-      } catch (invoiceError) {
-        console.error("Error generating PDF invoice:", invoiceError);
-        console.error("PDF generation failed. Email will be sent without invoice attachment.");
-        // Continue sending email without invoice if PDF generation fails
+        } catch (invoiceError) {
+          console.error("Error generating PDF invoice:", invoiceError);
+          console.error("PDF generation failed. Email will be sent without invoice attachment.");
+          // Continue sending email without invoice if PDF generation fails
+        }
       }
     }
 
