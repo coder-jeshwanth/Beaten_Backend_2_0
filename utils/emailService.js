@@ -211,10 +211,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.fontSize(9).font('Helvetica');
       doc.text('195042195657972', rightSideX + 95, orderInfoY + 15);
 
-      // Horizontal line before product table
-      doc.moveTo(margin, margin + 245).lineTo(margin + pageWidth, margin + 245).stroke();
-
-      // PRODUCT TABLE - Centered with margins on both sides
+      // PRODUCT TABLE - Centered with margins on both sides (no horizontal line before table)
       const tableY = margin + 255;
       
       // Add extra side margins for better table centering
@@ -246,7 +243,17 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         colPositions.push(xPos);
       }
 
-      // Draw table header background
+      // Draw table outer border first (top, left, right)
+      doc.lineWidth(0.75);
+      // Top border
+      doc.moveTo(tableStartX, tableY - 5).lineTo(tableStartX + tableWidth, tableY - 5).stroke();
+      // Left border
+      doc.moveTo(tableStartX, tableY - 5).lineTo(tableStartX, tableY + 15).stroke();
+      // Right border
+      doc.moveTo(tableStartX + tableWidth, tableY - 5).lineTo(tableStartX + tableWidth, tableY + 15).stroke();
+      doc.lineWidth(0.5);
+      
+      // Draw table header with background
       doc.rect(tableStartX, tableY - 5, tableWidth, 20).fillAndStroke('#f5f5f5', '#000000');
       
       // Draw table header with better styling
@@ -269,18 +276,19 @@ const generateInvoicePDF = async (order, shippingAddress) => {
           ellipsis: true
         });
 
-        // Draw vertical lines
+        // Draw vertical lines for all columns
         if (i > 0) {
           doc.moveTo(colPositions[i], tableY - 5).lineTo(colPositions[i], tableY + 15).stroke();
         }
       }
 
-      // Horizontal line below header
+      // Horizontal line below header - part of the table border system
       doc.moveTo(tableStartX, tableY + 15).lineTo(tableStartX + tableWidth, tableY + 15).stroke();
 
       // Table rows
       let rowY = tableY + 20;
       doc.fontSize(7).font('Helvetica').fillColor('#000000'); // Slightly smaller font for content
+      let lastRowY = rowY; // Track the position of the last row for final border
 
       // Fetch and display order items
       order.orderItems.forEach((item) => {
@@ -346,11 +354,34 @@ const generateInvoicePDF = async (order, shippingAddress) => {
         // Adjust row height if description text wraps
         const rowHeight = Math.max(15, maxTextHeight);
         
+        // Draw vertical borders for all columns
+        for (let i = 0; i <= headers.length; i++) {
+          const xPos = i === 0 ? tableStartX : (i === headers.length ? tableStartX + tableWidth : colPositions[i]);
+          doc.moveTo(xPos, rowY - 5).lineTo(xPos, rowY + rowHeight).stroke();
+        }
+        
         // Horizontal line below row
         doc.moveTo(tableStartX, rowY + rowHeight).lineTo(tableStartX + tableWidth, rowY + rowHeight).stroke();
+        lastRowY = rowY + rowHeight; // Update the last row position
         rowY += rowHeight + 5; // Add 5pt padding between rows
       });
 
+      // If there are no order items, draw an empty table with borders
+      if (order.orderItems.length === 0) {
+        // Draw empty table row with border
+        const emptyRowHeight = 30;
+        
+        // Draw vertical borders
+        for (let i = 0; i <= headers.length; i++) {
+          const xPos = i === 0 ? tableStartX : (i === headers.length ? tableStartX + tableWidth : colPositions[i]);
+          doc.moveTo(xPos, rowY - 5).lineTo(xPos, rowY + emptyRowHeight).stroke();
+        }
+        
+        // Draw horizontal line for bottom of empty row
+        doc.moveTo(tableStartX, rowY + emptyRowHeight).lineTo(tableStartX + tableWidth, rowY + emptyRowHeight).stroke();
+        lastRowY = rowY + emptyRowHeight;
+      }
+      
       // Tax table (right aligned, with proper spacing)
       const taxY = rowY + 10;
       
