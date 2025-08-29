@@ -2823,10 +2823,18 @@ const sendAdminReturnNotification = async (data) => {
       </html>
     `;
 
+    // Get product names for subject line
+    const productNames = returnedItems && returnedItems.length 
+      ? returnedItems.map(item => item.name).join(", ")
+      : "Product";
+      
+    // Create a more detailed subject line
+    const subject = `🔄 Return Request from ${userName} - Order #${orderId} - ${productNames}`;
+    
     const mailOptions = {
       from: `"BEATEN Return System" <${process.env.EMAIL_USER || "returns@beaten.in"}>`,
       to: process.env.ADMIN_ORDER_MAIL || "orders@beaten.in", // Admin email
-      subject: `🔄 New Return Request - Order #${orderId} - ${userName}`,
+      subject: subject,
       html: htmlContent,
     };
 
