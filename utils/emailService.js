@@ -2321,141 +2321,6 @@ const sendAdminOrderStatusNotification = async (orderData) => {
 };
 
 // Send admin notification for return requests
-const sendAdminReturnNotification = async (returnData) => {
-  try {
-    const transporter = createTransporter();
-    const { orderId, productId, userName, userEmail, reason } = returnData;
-    console.log("Mail Called")
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Return Request - BEATEN</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-          }
-          .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-          }
-          .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #1a1a1a;
-            padding-bottom: 20px;
-          }
-          .logo {
-            font-size: 28px;
-            font-weight: bold;
-            color: #1a1a1a;
-            margin-bottom: 10px;
-          }
-          .return-info {
-            background-color: #f8f9fa;
-            border-left: 4px solid #dc3545;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 5px;
-          }
-          .return-info h3 {
-            margin-top: 0;
-            color: #1a1a1a;
-          }
-          .reason-box {
-            background-color: #fff5f5;
-            border: 1px solid #fed7d7;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 14px;
-            border-top: 1px solid #e0e0e0;
-            padding-top: 20px;
-          }
-          .timestamp {
-            background-color: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-            margin: 20px 0;
-            font-size: 12px;
-            color: #666;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="logo">BEATEN</div>
-            <h2>🔄 New Return Request</h2>
-          </div>
-          
-          <div class="return-info">
-            <h3>Return Details</h3>
-            <p><strong>Order ID:</strong> #${orderId}</p>
-            <p><strong>Product ID:</strong> ${productId}</p>
-            <p><strong>Customer:</strong> ${userName} (${userEmail})</p>
-          </div>
-          
-          <div class="reason-box">
-            <h3>Return Reason</h3>
-            <p>${reason}</p>
-          </div>
-          
-          <div class="timestamp">
-            <strong>Requested on:</strong> ${new Date().toLocaleString(
-      "en-US",
-      {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZoneName: "short",
-      }
-    )}
-          </div>
-          
-          <div class="footer">
-            <p>This is an automated notification from the BEATEN return system.</p>
-            <p>Please review this return request in your admin panel.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const mailOptions = {
-      from: `"BEATEN Return System" <${process.env.EMAIL_USER || "support@beaten.in"
-        }>`,
-      to: process.env.ADMIN_RETURN_MAIL || "returns@beaten.in", // Admin email
-      subject: `🔄 New Return Request - Order #${orderId}`,
-      html: htmlContent,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Admin return notification sent: ", info.messageId);
-    return true;
-  } catch (error) {
-    console.error("Error sending admin return notification: ", error);
-    return false; // Don't throw error as admin notification is not critical
-  }
-};
 
 // Send user notification email
 const sendUserNotificationEmail = async (email, message, link = null) => {
@@ -3056,7 +2921,7 @@ const sendReturnRequestEmail = async (email, userName, orderId, orderItems, refu
               ${orderItemsHtml}
             </div>
             
-            ${paymentMethod && paymentMethod.toLowerCase().includes('online') ? `
+            ${paymentMethod && typeof paymentMethod === 'string' && paymentMethod.toLowerCase().includes('online') ? `
               <p>If your payment was made through online mode (UPI, Debit/Credit Card, Net Banking, Wallets, etc.), the refund amount of ₹${refundAmount || '0'} will be credited directly to your original payment source within 5–7 business days.</p>
             ` : `
               <p>If your payment was made through Cash on Delivery (COD), we request you to kindly provide the following details for processing your refund:</p>
@@ -3119,7 +2984,7 @@ module.exports = {
   sendOrderConfirmedEmail,
   sendReturnPlacedEmail,
   sendReturnStatusEmail,
-  sendReturnRequestEmail, // Added new return request function
+  sendReturnRequestEmail,
   // Admin notification functions
   sendAdminOrderNotification,
   sendAdminRegistrationNotification,

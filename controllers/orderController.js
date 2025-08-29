@@ -819,9 +819,12 @@ const initiateReturnRequest = async (req, res) => {
     
     // Validate that the items belong to the order
     const validItems = items.filter(item => {
-      return order.orderItems.some(orderItem => 
-        orderItem._id.toString() === item.itemId.toString()
-      );
+      return order.orderItems.some(orderItem => {
+        // Handle both cases: when itemId is already an ObjectId or when it's a string
+        const itemIdStr = item.itemId.toString();
+        const orderItemIdStr = orderItem._id ? orderItem._id.toString() : '';
+        return orderItemIdStr === itemIdStr;
+      });
     });
     
     if (validItems.length === 0) {
@@ -831,10 +834,13 @@ const initiateReturnRequest = async (req, res) => {
       });
     }
     
-    // Create return request data
+    // Create return request data with properly formatted items
     const returnRequest = {
       reason,
-      items: validItems,
+      items: validItems.map(item => ({
+        itemId: item.itemId,
+        reason: item.reason || reason // Use item-specific reason if provided, or fallback to general reason
+      })),
       status: "pending",
       createdAt: new Date()
     };
@@ -847,7 +853,12 @@ const initiateReturnRequest = async (req, res) => {
     
     // Calculate refund amount
     const refundAmount = validItems.reduce((total, item) => {
-      const orderItem = order.orderItems.find(oi => oi._id.toString() === item.itemId.toString());
+      // Find matching order item, handling potential missing _id
+      const orderItem = order.orderItems.find(oi => {
+        if (!oi._id) return false;
+        return oi._id.toString() === item.itemId.toString();
+      });
+      
       if (orderItem) {
         return total + (orderItem.price * orderItem.quantity);
       }
@@ -856,7 +867,21 @@ const initiateReturnRequest = async (req, res) => {
     
     // Get the ordered items details for the email
     const returnedItems = validItems.map(item => {
-      const orderItem = order.orderItems.find(oi => oi._id.toString() === item.itemId.toString());
+      const orderItem = order.orderItems.find(oi => {
+        if (!oi._id) return false;
+        return oi._id.toString() === item.itemId.toString();
+      });
+      
+      if (!orderItem) {
+        // Provide a fallback if order item is not found
+        return {
+          name: "Unknown Item",
+          size: "N/A",
+          quantity: 1,
+          price: 0
+        };
+      }
+      
       return {
         name: orderItem.name,
         size: orderItem.size,
@@ -865,28 +890,37 @@ const initiateReturnRequest = async (req, res) => {
       };
     });
     
-    // Get payment method
-    const paymentMethod = order.paymentInfo?.method || 'Unknown';
+    // Get payment method with proper fallback
+    let paymentMethod = 'Unknown';
+    if (order.paymentInfo && typeof order.paymentInfo === 'object') {
+      paymentMethod = order.paymentInfo.method || 'Unknown';
+    }
+    
+    // Get user details safely
+    const userEmail = order.user && order.user.email ? order.user.email : '';
+    const userName = order.user && order.user.name ? order.user.name : 'Customer';
     
     // Send email notification to user
-    if (order.user && order.user.email) {
+    if (userEmail) {
       const { sendReturnRequestEmail } = require("../utils/emailService");
       await sendReturnRequestEmail(
-        order.user.email,
-        order.user.name,
+        userEmail,
+        userName,
         order.orderId,
         returnedItems,
         refundAmount,
         paymentMethod
       );
+    } else {
+      console.warn(`No user email found for return request on order: ${order.orderId}`);
     }
     
     // Send notification to admin
     const { sendAdminReturnNotification } = require("../utils/emailService");
     await sendAdminReturnNotification({
       orderId: order.orderId,
-      userName: order.user.name,
-      userEmail: order.user.email,
+      userName: userName,
+      userEmail: userEmail || 'Email not available',
       reason: reason,
       returnedItems: returnedItems,
       refundAmount: refundAmount

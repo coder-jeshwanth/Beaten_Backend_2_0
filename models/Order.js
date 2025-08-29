@@ -88,6 +88,23 @@ const orderSchema = new mongoose.Schema(
         return Math.floor(Math.random() * 900000000000000) + 100000000000000;
       },
     },
+    returnRequest: {
+      reason: { type: String },
+      items: [{
+        itemId: { type: mongoose.Schema.Types.ObjectId },
+        reason: { type: String }
+      }],
+      status: { 
+        type: String, 
+        enum: ['pending', 'approved', 'rejected', 'return_completed'],
+        default: 'pending'
+      },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date },
+      completedAt: { type: Date }
+    },
+    returnCompletedAt: { type: Date },
+    deliveredAt: { type: Date },
   },
   { timestamps: true }
 );
