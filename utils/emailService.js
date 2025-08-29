@@ -650,11 +650,22 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
         margin + 15, contentStartY + 75, { width: pageWidth - 30, align: 'left' });
 
-      // Bottom tagline - matching reference exactly - adjusted to appear at the bottom
-      doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
-      doc.text('Elevate your look with BEATEN....', margin + 15, contentStartY + 95);
-      doc.fontSize(9).font('Helvetica').fillColor('#666666'); // Increased font size from 8 to 9
-      doc.text('www.beaten.in', margin + pageWidth - 80, contentStartY + 95);
+      // Bottom tagline - "Elevate your look..." placed at the very bottom, outside the main content area but still visible
+      doc.fontSize(9).font('Helvetica').fillColor('#666666');
+      // Position the text at the bottom of the page, below the border
+      doc.text('Elevate your look with BEATEN....', margin + 15, margin + 785);
+      
+      // Draw a line above the tagline to separate it from the main content
+      doc.lineWidth(0.25);
+      doc.moveTo(margin, margin + 780).lineTo(margin + pageWidth, margin + 780).stroke();
+      doc.lineWidth(0.5); // Reset line width
+      
+      // Center the website URL
+      doc.fontSize(9).font('Helvetica').fillColor('#666666');
+      const websiteText = 'www.beaten.in';
+      const websiteTextWidth = doc.widthOfString(websiteText);
+      const centerPosition = margin + (pageWidth / 2) - (websiteTextWidth / 2);
+      doc.text(websiteText, centerPosition, contentStartY + 95);
 
       doc.end();
     } catch (error) {
