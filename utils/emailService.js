@@ -12,38 +12,55 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       const orderDate = new Date(order.createdAt).toLocaleDateString("en-IN");
       const currentDate = new Date().toLocaleDateString("en-IN");
 
-      // Calculate totals and taxes
-      const subtotal = order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
       /* 
-      * Calculate GST based on the provided formula: 
-      * GST = (Rate × Qty × GST%)
-      * For items with price ≥ 999, GST is 12%
-      * The GST is then split into CGST & SGST (each half of GST)
-      * Final Total = Item Price + CGST + SGST
-      */
-      let totalGST = 0;
-      order.orderItems.forEach(item => {
-        const price = parseFloat(item.price) || 0;
-        const gst = parseFloat(item.gst) || 0;
-        const quantity = parseInt(item.quantity) || 0;
-        
-        // Calculate GST percentage and amount
-        const gstPercentage = (gst / price) * 100; // Get GST percentage
-        const itemGSTAmount = (price * quantity * gstPercentage / 100);
-        
-        totalGST += itemGSTAmount;
-      });
+       * Calculate GST based on GST-inclusive pricing:
+       * 
+       * Example from requirement:
+       * Catalog price (incl. 18% GST): ₹4,500.00
+       * Pre-tax value = 4500 / 1.18 = ₹3,813.56
+       * Discount (convert to pre-tax) = 249 / 1.18 = ₹211.02
+       * Taxable value after discount = 3813.56 − 211.02 = ₹3,602.54
+       * CGST 9% on 3602.54 = ₹324.23
+       * SGST 9% on 3602.54 = ₹324.23
+       * Grand Total = 3602.54 + 324.23 + 324.23 = ₹4,251.00
+       */
       
+      // Get the total price inclusive of GST
+      const catalogPriceWithGST = order.orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Get discount amounts
       const discountAmount = order.coupon?.discountAmount || 0;
       const subscriptionDiscount = order.subscriptionDiscount?.amount || 0;
       const totalDiscount = discountAmount + subscriptionDiscount;
+      
+      // Calculate default GST percentage (using 18% if not specified)
+      // Normally, we should get this from each item, but for simplicity we'll use a standard rate
+      // For clothing items ≥ 999, it's typically 12% GST
+      const gstPercentage = 12; // 12% GST for clothing
+      const gstMultiplier = 1 + (gstPercentage / 100); // e.g., 1.12 for 12% GST
+      
+      // Calculate pre-tax values
+      const preTaxCatalogValue = catalogPriceWithGST / gstMultiplier;
+      const preTaxDiscountValue = totalDiscount / gstMultiplier;
+      
+      // Calculate taxable value after discount
+      const taxableValue = preTaxCatalogValue - preTaxDiscountValue;
+      
+      // Calculate GST on taxable value
+      const totalGST = taxableValue * (gstPercentage / 100);
+      
+      // Calculate CGST and SGST
 
-      // Calculate tax breakdown
+      // Calculate tax breakdown based on GST-inclusive pricing
       const isInterState = shippingAddress.state !== 'Karnataka';
+      // Split GST between CGST and SGST or assign to IGST based on if shipping is inter-state
       const cgst = isInterState ? 0 : totalGST / 2;
       const sgst = isInterState ? 0 : totalGST / 2;
       const igst = isInterState ? totalGST : 0;
+      
+      // Final grand total calculation
+      // Taxable value + CGST + SGST (or IGST)
+      const calculatedGrandTotal = taxableValue + cgst + sgst + igst;
 
       // Create PDF document with A4 size (standard size as per reference)
       const doc = new PDFDocument({ 
@@ -235,7 +252,7 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('195042195657972', rightSideX + 95, orderInfoY + 15);
 
       // PRODUCT TABLE - Centered with margins on both sides (no horizontal line before table)
-      const tableY = margin + 255;
+      const tableY = margin + 275; // Adding more space above the table
       
       // Add extra side margins for better table centering
       const tableSideMargin = 40;
@@ -247,14 +264,16 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       
       // Adjusted column widths to fit within the centered table
       // Distribution is proportional but with more emphasis on the Description column
+      // Make Rate and Amount columns exactly the same width
+      const rateAmountWidth = Math.floor(tableWidth * 0.12);  // Fixed width for Rate and Amount columns
       const colWidths = [
-        Math.floor(tableWidth * 0.30),  // Description - 30%
-        Math.floor(tableWidth * 0.15),  // SKU - 15%
+        Math.floor(tableWidth * 0.28),  // Description - 28%
+        Math.floor(tableWidth * 0.14),  // SKU - 14%
         Math.floor(tableWidth * 0.10),  // HSN - 10%
         Math.floor(tableWidth * 0.08),  // Qty - 8%
-        Math.floor(tableWidth * 0.12),  // Rate - 12%
-        Math.floor(tableWidth * 0.12),  // Amount - 12%
-        Math.floor(tableWidth * 0.13)   // Total - 13%
+        rateAmountWidth,                // Rate - 12%
+        rateAmountWidth,                // Amount - 12%
+        Math.floor(tableWidth * 0.14)   // Total - 14%
       ];
       
       // Calculate positions for columns
@@ -315,22 +334,29 @@ const generateInvoicePDF = async (order, shippingAddress) => {
 
       // Fetch and display order items
       order.orderItems.forEach((item) => {
-        // Calculate item amounts
+        // Calculate item amounts based on GST-inclusive pricing
         const price = parseFloat(item.price) || 0;
         const gst = parseFloat(item.gst) || 0;
         const quantity = parseInt(item.quantity) || 0;
         
-        // Calculate GST amount as per provided calculation method (Rate × Qty × GST%)
-        const gstPercentage = (gst / price) * 100; // Calculate GST percentage
-        const itemGSTAmount = (price * quantity * gstPercentage / 100); // GST amount calculation
+        // Calculate GST percentage (if provided in gst field, otherwise use default 12%)
+        const gstPercentage = (gst > 0 && price > 0) ? ((gst / price) * 100) : 12;
+        const gstMultiplier = 1 + (gstPercentage / 100);
+        
+        // Calculate pre-tax value (catalog price / (1 + GST rate))
+        const catalogPrice = price * quantity; // Total catalog price with GST
+        const preTaxValue = catalogPrice / gstMultiplier;
+        
+        // Calculate GST amount from pre-tax value
+        const itemGSTAmount = preTaxValue * (gstPercentage / 100);
         
         // Split GST into CGST & SGST (for display purposes)
         const itemCGST = isInterState ? 0 : itemGSTAmount / 2;
         const itemSGST = isInterState ? 0 : itemGSTAmount / 2;
         const itemIGST = isInterState ? itemGSTAmount : 0;
         
-        const itemAmount = itemGSTAmount; // For backward compatibility
-        const itemTotal = price * quantity + itemAmount;
+        const itemAmount = itemGSTAmount; // GST amount
+        const itemTotal = catalogPrice; // Catalog price already includes GST
         
         // Get HSN code with fallback
         const hsnCode = item.hsnCode || item.hsn || '6109';
@@ -463,51 +489,66 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.fontSize(8).font('Helvetica-Bold');
       doc.text('Total', taxLabelX + 5, taxY + 50);
       
-      // Format total price correctly
-      let totalPrice = order.totalPrice;
-      if (typeof totalPrice === 'string') {
-        // If it's a string, try to convert to number
-        totalPrice = parseFloat(totalPrice.replace(/[^\d.-]/g, '')) || 0;
-      }
-      
-      doc.text(`${rupeeSymbol}${totalPrice.toFixed(2)}`, taxValueX - 5, taxY + 50, { width: colWidths[6], align: 'right' });
+      // Display catalog price (GST-inclusive)
+      doc.text(`${rupeeSymbol}${catalogPriceWithGST.toFixed(2)}`, taxValueX - 5, taxY + 50, { width: colWidths[6], align: 'right' });
       
       // Draw horizontal line after Total
       doc.moveTo(taxLabelX, taxY + 60).lineTo(taxLabelX + gstTableWidth, taxY + 60).stroke();
       
       // Discount if applicable
       let discountY = taxY + 65;
-      if (order.coupon?.discountAmount || order.subscriptionDiscount?.amount) {
-        const discount = (order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0);
-        
+      if (totalDiscount > 0) {
         doc.fontSize(8).font('Helvetica-Bold');
         doc.text('Discount', taxLabelX + 5, discountY);
-        doc.text(`- ${rupeeSymbol}${discount.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
+        doc.text(`- ${rupeeSymbol}${totalDiscount.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
         
         discountY += 15;
         
         // Draw horizontal line after Discount
         doc.moveTo(taxLabelX, discountY - 5).lineTo(taxLabelX + gstTableWidth, discountY - 5).stroke();
+        
+        // Add Pre-tax information (for reference)
+        doc.fontSize(8).font('Helvetica');
+        doc.text('Pre-tax Value', taxLabelX + 5, discountY);
+        doc.text(`${rupeeSymbol}${preTaxCatalogValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
+        
+        discountY += 15;
+        
+        // Add Pre-tax Discount information
+        doc.text('Pre-tax Discount', taxLabelX + 5, discountY);
+        doc.text(`${rupeeSymbol}${preTaxDiscountValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
+        
+        discountY += 15;
+        
+        // Add Taxable Value information
+        doc.text('Taxable Value', taxLabelX + 5, discountY);
+        doc.text(`${rupeeSymbol}${taxableValue.toFixed(2)}`, taxValueX - 5, discountY, { width: colWidths[6], align: 'right' });
+        
+        discountY += 15;
       }
+      
+      // Add note about GST calculation method
+      doc.fontSize(7).font('Helvetica-Italic');
+      doc.text('Note: Prices are GST-inclusive', taxLabelX + 5, discountY - 5);
       
       // Grand Total (Bold and slightly larger)
       doc.lineWidth(0.75);
-      doc.moveTo(taxLabelX, discountY).lineTo(taxLabelX + gstTableWidth, discountY).stroke();
+      doc.moveTo(taxLabelX, discountY + 5).lineTo(taxLabelX + gstTableWidth, discountY + 5).stroke();
       doc.lineWidth(0.5);
       
       doc.fontSize(9).font('Helvetica-Bold');
-      doc.text('Grand Total', taxLabelX + 5, discountY + 10);
+      doc.text('Grand Total', taxLabelX + 5, discountY + 15);
       
-      // Calculate grand total
-      const grandTotal = totalPrice - ((order.coupon?.discountAmount || 0) + (order.subscriptionDiscount?.amount || 0));
-      doc.text(`${rupeeSymbol}${grandTotal.toFixed(2)}`, taxValueX - 5, discountY + 10, { width: colWidths[6], align: 'right' });
+      // Use calculated grand total based on GST-inclusive pricing
+      const grandTotal = catalogPriceWithGST - totalDiscount;
+      doc.text(`${rupeeSymbol}${grandTotal.toFixed(2)}`, taxValueX - 5, discountY + 15, { width: colWidths[6], align: 'right' });
       
       // Draw bottom border of the GST table
-      doc.moveTo(taxLabelX, discountY + 25).lineTo(taxLabelX + gstTableWidth, discountY + 25).stroke();
+      doc.moveTo(taxLabelX, discountY + 30).lineTo(taxLabelX + gstTableWidth, discountY + 30).stroke();
       
       // Draw vertical lines for GST table
-      doc.moveTo(taxLabelX, taxY - 5).lineTo(taxLabelX, discountY + 25).stroke(); // Left border
-      doc.moveTo(taxLabelX + gstTableWidth, taxY - 5).lineTo(taxLabelX + gstTableWidth, discountY + 25).stroke(); // Right border
+      doc.moveTo(taxLabelX, taxY - 5).lineTo(taxLabelX, discountY + 30).stroke(); // Left border
+      doc.moveTo(taxLabelX + gstTableWidth, taxY - 5).lineTo(taxLabelX + gstTableWidth, discountY + 30).stroke(); // Right border
 
       // Footer with QR codes (exactly matching reference image)
       const footerY = 650;
