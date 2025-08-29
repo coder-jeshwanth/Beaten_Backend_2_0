@@ -650,22 +650,25 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
         margin + 15, contentStartY + 75, { width: pageWidth - 30, align: 'left' });
 
-      // Bottom tagline - "Elevate your look..." placed at the very bottom, outside the main content area but still visible
-      doc.fontSize(9).font('Helvetica').fillColor('#666666');
-      // Position the text at the bottom of the page, below the border
-      doc.text('Elevate your look with BEATEN....', margin + 15, margin + 785);
+      // Place footer text just below the bordered invoice section but still inside the page
+      // Calculate the position just below the border
+      const outsideFooterY = margin + 790; // Position just below the border at 780
       
-      // Draw a line above the tagline to separate it from the main content
-      doc.lineWidth(0.25);
-      doc.moveTo(margin, margin + 780).lineTo(margin + pageWidth, margin + 780).stroke();
-      doc.lineWidth(0.5); // Reset line width
+      // Create a combined footer with tagline and website
+      doc.fontSize(10).font('Helvetica').fillColor('#666666');
       
-      // Center the website URL
-      doc.fontSize(9).font('Helvetica').fillColor('#666666');
+      // Center the "Elevate your look with BEATEN...." text
+      const taglineText = 'Elevate your look with BEATEN....';
+      const taglineWidth = doc.widthOfString(taglineText);
+      const taglineX = margin + (pageWidth / 2) - (taglineWidth / 2);
+      doc.text(taglineText, taglineX, outsideFooterY);
+      
+      // Center the website URL below the tagline
+      doc.fontSize(10).font('Helvetica').fillColor('#666666');
       const websiteText = 'www.beaten.in';
       const websiteTextWidth = doc.widthOfString(websiteText);
-      const centerPosition = margin + (pageWidth / 2) - (websiteTextWidth / 2);
-      doc.text(websiteText, centerPosition, contentStartY + 95);
+      const websiteX = margin + (pageWidth / 2) - (websiteTextWidth / 2);
+      doc.text(websiteText, websiteX, outsideFooterY + 15);
 
       doc.end();
     } catch (error) {
