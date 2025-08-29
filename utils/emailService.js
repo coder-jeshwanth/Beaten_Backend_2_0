@@ -590,10 +590,15 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.moveTo(taxLabelX, taxY - 5).lineTo(taxLabelX, discountY + 30).stroke(); // Left border
       doc.moveTo(taxLabelX + gstTableWidth, taxY - 5).lineTo(taxLabelX + gstTableWidth, discountY + 30).stroke(); // Right border
 
-      // Add more space after the grand total table (as requested)
+      // Place content directly below the grand total table as requested
       
       // Footer with QR codes (stacked vertically on left side)
-      const footerY = 680; // Move down by 30 points to create more space after grand total
+      const footerY = discountY + 60; // Position footer content right below the grand total table with minimal spacing
+      
+      // Draw a subtle separator line to distinguish content sections
+      doc.lineWidth(0.25);
+      doc.moveTo(margin, footerY - 20).lineTo(margin + pageWidth, footerY - 20).stroke();
+      doc.lineWidth(0.5); // Reset line width
 
       // QR Codes section - Stacked vertically on the left side
       try {
@@ -629,25 +634,25 @@ const generateInvoicePDF = async (order, shippingAddress) => {
 
       // Thank you message - matching reference style - moved to the right side of the QR codes
       doc.fontSize(11).font(FONTS.italic).fillColor('#000000');
-      doc.text('Thank You For shopping with BEATEN', margin + 100, footerY + 20, { width: pageWidth - 115, align: 'left' });
+      doc.text('Thank You For shopping with BEATEN', margin + 100, footerY + 10, { width: pageWidth - 115, align: 'left' });
 
       // Legal disclaimer (matching reference font and layout) - moved to the right side
       doc.fontSize(8).font('Helvetica').fillColor('#444444');
       doc.text('Products being sent under this invoice are for personal consumption of the customer and not for re-sale or commercial purposes.',
-        margin + 100, footerY + 45, { width: pageWidth - 115, align: 'left' });
+        margin + 100, footerY + 35, { width: pageWidth - 115, align: 'left' });
       doc.text('This is an electronically generated document issued in accordance with the provisions of the Information Technology Act, 2000 (21 of 2000) and does not require a physical signature.',
         margin + 15, footerY + 150, { width: pageWidth - 30, align: 'left' });
 
       // Bottom registered office line - adjusted to fit with the new layout
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
       doc.text('Regd Office: Beaten Apparels Plot NO 91, Block B, Road NO-4, Siddartha Enclave,Patelguda,Beeramguda,Pincode : 502319',
-        margin + 100, footerY + 100, { width: pageWidth - 115, align: 'left' });
+        margin + 100, footerY + 90, { width: pageWidth - 115, align: 'left' });
 
       // Bottom tagline - matching reference exactly - adjusted to fit with the new layout
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('Elevate your look with BEATEN....', margin + 100, footerY + 125);
+      doc.text('Elevate your look with BEATEN....', margin + 100, footerY + 110);
       doc.fontSize(8).font('Helvetica').fillColor('#666666');
-      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 125);
+      doc.text('www.beaten.in', margin + pageWidth - 80, footerY + 110);
 
       doc.end();
     } catch (error) {
