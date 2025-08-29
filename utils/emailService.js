@@ -174,11 +174,8 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       addressY += 12;
       doc.text(`Mobile NO: ${phoneNumber || ''}`, margin + 15, addressY);
       
-      // Horizontal line after recipient address
-      doc.moveTo(margin, margin + 205).lineTo(margin + pageWidth, margin + 205).stroke();
-      
-      // Add some space after the recipient section
-      const orderInfoY = margin + 225;
+      // Add space after the recipient section (without the horizontal line)
+      const orderInfoY = margin + 215;
       
       // ORDER NUMBER & CARRIER NAME (left side)
       doc.fontSize(9).font('Helvetica-Bold').fillColor('#000000');
@@ -191,10 +188,10 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.fontSize(9).font('Helvetica');
       doc.text('DELHIVERY', margin + 85, orderInfoY + 15);
       
-      // MODE OF PAYMENT & AWB NUMBER (right side)
+      // MODE OF PAYMENT & AWB NUMBER (right side with more spacing)
       doc.fontSize(9).font('Helvetica-Bold');
-      // Calculate right side starting position
-      const rightSideX = margin + 270;
+      // Calculate right side starting position with more spacing
+      const rightSideX = margin + pageWidth - 250;
       
       doc.text('Mode Of Payment:', rightSideX, orderInfoY);
       doc.fontSize(9).font('Helvetica');
@@ -214,11 +211,11 @@ const generateInvoicePDF = async (order, shippingAddress) => {
       doc.fontSize(9).font('Helvetica');
       doc.text('195042195657972', rightSideX + 95, orderInfoY + 15);
 
-      // Horizontal line after order information
-      doc.moveTo(margin, margin + 255).lineTo(margin + pageWidth, margin + 255).stroke();
+      // Horizontal line before product table
+      doc.moveTo(margin, margin + 245).lineTo(margin + pageWidth, margin + 245).stroke();
 
       // PRODUCT TABLE
-      const tableY = margin + 265;
+      const tableY = margin + 255;
 
       // Table headers matching reference invoice exactly
       const headers = ['Description', 'SKU', 'HSN', 'Qty', 'Rate', 'Amount', 'Total'];
